@@ -1,5 +1,5 @@
 import datetime
-from parser.parser import get_and_parse
+from swallow.parser.parser import get_and_parse
 from multiprocessing import Process, JoinableQueue
 from swallow.settings import logger
 
@@ -64,7 +64,7 @@ class Swallow:
 		self.out_queue = JoinableQueue()
 
 		read_worker = [Process(target=self.reader.scan_and_queue, args=(self.in_queue,),kwargs=(self.reader_scan_args))]
-		process_worker = [Process(target=get_and_parse, args=(self.in_queue,self.out_queue,self.process,self.process_args)) for i in range(p_nb_threads)]
+		process_worker = [Process(target=get_and_parse, args=(self.in_queue,self.out_queue,self.process),kwargs=(self.process_args)) for i in range(p_nb_threads)]
 		write_worker = [Process(target=self.writer.dequeue_and_store, args=(self.out_queue,),kwargs=(self.writer_store_args)) for i in range(p_nb_threads)]
 
 		# Running workers
