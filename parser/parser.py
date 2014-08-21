@@ -13,7 +13,7 @@ def get_and_parse(p_inqueue,p_outqueue,p_process,**kwargs):
 
 		p_process must take a "doc" as a first parameter
 	"""
-	logger.info(' ici : %s',__name__)
+
 	while True:
 		try:
 			logger.debug("Size of queues. in : %i / ou : %i",p_inqueue.qsize(),p_outqueue.qsize())

@@ -117,7 +117,3 @@ class Swallow:
 		""" Set the processor function and its extra param"""
 		self.process = p_process
 		self.process_args = kwargs
-
-	def get_logger(self):
-		""" Get swallow logger for configuration """
-		return self.logger
