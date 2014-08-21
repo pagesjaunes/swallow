@@ -18,10 +18,6 @@ Note that as they consume a queue, both writers and processors must deal the "po
 the list they are consuming, they must stop to listen to it.
 The Swallow object automatically generates these "pills" as it knows when producers have finished their task.
 
-# License
-
-This project is released under version 2.0 of the [Apache License][]
-
 # Example of use
 Get data from elastic search to a csv file
 
@@ -44,3 +40,11 @@ Get data from elastic search to a csv file
 
     swal.run(nb_threads)
 ```
+# License
+
+This project is released under version 2.0 of the [Apache License][]
+
+# About the project name
+
+It refers to Holy Grail and King Arthur talking about African Swallows. This framework transmits and transforms data from queue to queue, as the original swallow carried coconuts.
+
