@@ -106,13 +106,15 @@ class ESio:
 				logger.info("ESio.dequeue_and_store : User interruption of the process")
 				sys.exit(EXIT_USER_INTERRUPT)
 
-	def scan_and_queue(self,p_queue,**kwargs):
+	def scan_and_queue(self,p_queue,p_scroll_time='60m',p_timeout='60m',**kwargs):
 		"""Reads docs from an es index according to a query and pushes them to the queue
 
-			p_queue: 	Queue where items are pushed to
-			p_index:	Index where items are picked from
-			p_doctype:	DocType of the items
-			p_query:	ElasticSearch query for scanning the index
+			p_queue: 		Queue where items are pushed to
+			p_scroll_time:	Time for scroll method
+			p_timeout:		Timeout - After this period, scan context is closed
+			p_index:		Index where items are picked from
+			p_doctype:		DocType of the items
+			p_query:		ElasticSearch query for scanning the index
 		"""
 		try:
 			param = [{'host':self.host,'port':self.port}]
@@ -124,9 +126,9 @@ class ESio:
 			sys.exit(EXIT_IO_ERROR)
 
 		if 'p_doctype' in kwargs:
-			documents = helpers.scan(client= es, query=kwargs['p_query'], scroll= "10m", index=kwargs['p_index'], doc_type=kwargs['p_doctype'], timeout="10m")
+			documents = helpers.scan(client= es, query=kwargs['p_query'], scroll= p_scroll_time, index=kwargs['p_index'], doc_type=kwargs['p_doctype'], timeout=p_timeout)
 		else:
-			documents = helpers.scan(client= es, query=kwargs['p_query'], scroll= "10m", index=kwargs['p_index'], timeout="10m")
+			documents = helpers.scan(client= es, query=kwargs['p_query'], scroll= p_scroll_time, index=kwargs['p_index'], timeout=p_timeout)
 		# documents= helpers.scan(client= self.es, query=p_query, scroll= "10m", index=p_index, doc_type=p_doctype, timeout="10m")
 		for doc in documents:
 			p_queue.put(doc)
