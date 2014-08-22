@@ -116,6 +116,10 @@ class Swallow:
 		else:
 			self.readers.append({'reader':p_reader,'args':kwargs})
 
+	def flush_readers(self):
+		""" Removes all the readers """
+		del self.readers[:]
+
 	def set_writer(self,p_writer,**kwargs):
 		""" Set the writer and its "dequeue_and_store" method extra param"""
 		self.writer = p_writer
