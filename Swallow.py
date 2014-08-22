@@ -112,7 +112,7 @@ class Swallow:
 			May be used when scaning multi data source
 		"""
 		if not self.readers:
-			self.set_reader(p_reader,kwargs)
+			self.set_reader(p_reader,**kwargs)
 		else:
 			self.readers.append({'reader':p_reader,'args':kwargs})
 
