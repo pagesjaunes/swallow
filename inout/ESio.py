@@ -123,7 +123,10 @@ class ESio:
 			logger.error(e)
 			sys.exit(EXIT_IO_ERROR)
 
-		documents= helpers.scan(client= es, query=kwargs['p_query'], scroll= "10m", index=kwargs['p_index'], doc_type=kwargs['p_doctype'], timeout="10m")
+		if 'p_doctype' in kwargs:
+			documents = helpers.scan(client= es, query=kwargs['p_query'], scroll= "10m", index=kwargs['p_index'], doc_type=kwargs['p_doctype'], timeout="10m")
+		else:
+			documents = helpers.scan(client= es, query=kwargs['p_query'], scroll= "10m", index=kwargs['p_index'], timeout="10m")
 		# documents= helpers.scan(client= self.es, query=p_query, scroll= "10m", index=p_index, doc_type=p_doctype, timeout="10m")
 		for doc in documents:
-			p_queue.put(doc['_source'])
+			p_queue.put(doc)
