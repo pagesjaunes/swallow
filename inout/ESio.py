@@ -91,7 +91,7 @@ class ESio:
                     # Bulk indexation
                     if len(bulk) > 0:
                         logger.debug("Indexing %i documents",len(bulk))
-                        helpers.bulk(es, bulk)
+                        helpers.bulk(es, bulk, raise_on_error=True)
                         # es.index(index=self.index,doc_type=p_doctype,body=source_doc)
                 except Exception as e:
                     logger.error("Bulk not indexed in ES")
