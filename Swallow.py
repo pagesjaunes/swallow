@@ -45,8 +45,7 @@ class Swallow:
 	def __init__(self):
 		"""Class creation"""
 
-		self.reader = None
-		self.reader_scan_args = None
+		self.readers = None
 		self.writer = None
 		self.writer_store_args = None
 		self.process = None
@@ -63,7 +62,8 @@ class Swallow:
 		self.in_queue = JoinableQueue()
 		self.out_queue = JoinableQueue()
 
-		read_worker = [Process(target=self.reader.scan_and_queue, args=(self.in_queue,),kwargs=(self.reader_scan_args))]
+		read_worker = [Process(target=reader['reader'].scan_and_queue, args=(self.in_queue,),kwargs=(reader['args'])) for reader in self.readers]
+		# read_worker = [Process(target=self.reader.scan_and_queue, args=(self.in_queue,),kwargs=(self.reader_scan_args))]
 		process_worker = [Process(target=get_and_parse, args=(self.in_queue,self.out_queue,self.process),kwargs=(self.process_args)) for i in range(p_nb_threads)]
 		write_worker = [Process(target=self.writer.dequeue_and_store, args=(self.out_queue,),kwargs=(self.writer_store_args)) for i in range(p_nb_threads)]
 
@@ -105,8 +105,16 @@ class Swallow:
 
 	def set_reader(self,p_reader,**kwargs):
 		""" Set the reader and its "scan_and_queue" method extra param"""
-		self.reader = p_reader
-		self.reader_scan_args = kwargs
+		self.readers = [{'reader':p_reader,'args':kwargs}]
+
+	def add_reader(self,p_reader,**kwargs):
+		""" Add a reader and its "scan_and_queue" method extra param to the reader list
+			May be used when scaning multi data source
+		"""
+		if not self.readers:
+			self.set_reader(self,p_reader,**kwargs)
+		else:
+			self.readers.append({'reader':p_reader,'args':kwargs})
 
 	def set_writer(self,p_writer,**kwargs):
 		""" Set the writer and its "dequeue_and_store" method extra param"""
