@@ -44,14 +44,12 @@ class ESio:
 
 		return delete_ok
 
-	def dequeue_and_store(self,p_queue,**kwargs):
+	def dequeue_and_store(self,p_queue,p_index):
 		"""Gets docs from p_queue and stores them in the csv file
 		 	Stops dealing with the queue when receiving a "None" item
 
 			p_queue: 			queue wich items are picked from. Elements has to be "list".
 			p_index:			elasticsearch index where to store the docs
-			p_doctype:			doctype of the indexed docs
-			p_id_field_name:	if a field of the doc has to be used as the elasticsearch '_id', set it here
 		"""
 		try:
 			param = [{'host':self.host,'port':self.port}]
@@ -78,19 +76,15 @@ class ESio:
 						break
 
 					# Bulk element creation from the source_doc
-					document = {
-						"_index": kwargs['p_index'],
-						"_type": kwargs['p_doctype'],
-						"_source": source_doc
-					}
+					source_doc['_index'] = p_index
 
 					# If a field is defined as the id one, report it as the ElasticSearch _id
-					if 'p_id_field_name' in kwargs:
-						id_field_name = kwargs['p_id_field_name']
-						if id_field_name in source_doc:
-							document["_id"]=source_doc[id_field_name]
+					# if 'p_id_field_name' in kwargs:
+					# 	id_field_name = kwargs['p_id_field_name']
+					# 	if id_field_name in source_doc:
+					# 		document["_id"]=source_doc[id_field_name]
 
-					bulk.append(document)
+					bulk.append(source_doc)
 					p_queue.task_done()
 
 				try:
