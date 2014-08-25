@@ -15,34 +15,26 @@ class Algoliaio:
         self.app_id = p_app_id
         self.api_key = p_api_key
         self.bulk_size = p_bulksize
+        self.client = algoliasearch.Client(self.app_id,self.api_key)
 
+    def clear_index(self,p_index):
+        """Deletes and index
 
-    # def clear_index(self,p_index):
-    #     """Deletes and index
+            - p_index:     index to delete
+            - returns true if p_index has been deleted, false if not
+        """
+        delete_ok = True
 
-    #         - p_index:     index to delete
-    #         - returns true if p_index has been deleted, false if not
-    #     """
-    #     delete_ok = True
+        try:
+            index = self.client.initIndex(p_index)
+            index.clear_index()
+            logger.info('Index %s deleted',p_index)
+        except Exception as e:
+            logger.error('Error deleting the index %s',p_index)
+            logger.error(e)
+            delete_ok = False
 
-    #     try:
-    #         param = [{'host':self.host,'port':self.port}]
-    #         es = Elasticsearch(param)
-    #         logger.info('Connected to ES Server: %s',json.dumps(param))
-    #     except Exception as e:
-    #         logger.error('Connection failed to ES Server : %s',json.dumps(param))
-    #         logger.error(e)
-    #         delete_ok = False
-
-    #     try:
-    #         es.indices.delete(index=p_index)
-    #         logger.info('Index %s deleted',p_index)
-    #     except Exception as e:
-    #         logger.error('Error deleting the index %s',p_index)
-    #         logger.error(e)
-    #         delete_ok = False
-
-    #     return delete_ok
+        return delete_ok
 
     def dequeue_and_store(self,p_queue,p_index):
         """Gets docs from p_queue and stores them in the algolia
@@ -51,9 +43,8 @@ class Algoliaio:
             p_queue:             queue wich items are picked from. Elements has to be "list".
             p_index:            algolia index where to store the docs
         """
-        client = algoliasearch.Client(self.app_id,self.api_key)
-        index = client.initIndex(p_index)
 
+        index = self.client.initIndex(p_index)
         # Loop untill receiving the "poison pill" item (meaning : no more element to read)
         poison_pill = False
         while not(poison_pill):
@@ -76,8 +67,7 @@ class Algoliaio:
                     # Bulk indexation
                     if len(bulk) > 0:
                         logger.info("Indexing %i documents",len(bulk))
-                        res = index.addObjects(bulk)
-                        logger.info("Task id %s", res)
+                        index.addObjects(bulk)
                 except Exception as e:
                     logger.error("Bulk not indexed in algolia")
                     logger.error(e)
