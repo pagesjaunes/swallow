@@ -1,6 +1,7 @@
-from swallow.settings import logger, EXIT_IO_ERROR, EXIT_USER_INTERRUPT
+from swallow.settings import logger, EXIT_IO_ERROR
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError
+import sys
 
 class Mongoio: 
     """Reads and writes documents from/to a MongoDB Collection"""
@@ -46,11 +47,8 @@ class Mongoio:
         logger.info('Scanning %i items in %s',nb_docs, p_collection)
 
         # Each items is put into the queue
-        compteur = 0
         documents.batch_size(100)
 
         for doc in documents:
-            compteur = compteur + 1
-            del doc['_id']    # Mongo ObjectId can't be pushed in a Queue
             p_queue.put(doc)
 
