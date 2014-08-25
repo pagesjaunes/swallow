@@ -27,7 +27,7 @@ class Algoliaio:
 
         try:
             index = self.client.initIndex(p_index)
-            index.clear_index()
+            index.clearIndex()
             logger.info('Index %s deleted',p_index)
         except Exception as e:
             logger.error('Error deleting the index %s',p_index)
