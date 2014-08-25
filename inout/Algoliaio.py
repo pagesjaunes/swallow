@@ -36,6 +36,17 @@ class Algoliaio:
 
         return delete_ok
 
+    def set_settings(self,p_index,p_conf):
+        """Sets the index settings
+        """
+        try:
+            index = self.client.initIndex(p_index)
+            index.setSettings(p_conf)
+            logger.info('Index %s set',p_index)
+        except Exception as e:
+            logger.error('Error setting the index %s',p_index)
+            logger.error(e)
+
     def dequeue_and_store(self,p_queue,p_index):
         """Gets docs from p_queue and stores them in the algolia
              Stops dealing with the queue when receiving a "None" item
