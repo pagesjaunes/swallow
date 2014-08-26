@@ -15,7 +15,6 @@ class Algoliaio:
         self.app_id = p_app_id
         self.api_key = p_api_key
         self.bulk_size = p_bulksize
-        self.client = algoliasearch.Client(self.app_id,self.api_key)
 
     def clear_index(self,p_index):
         """Deletes and index
@@ -26,7 +25,8 @@ class Algoliaio:
         delete_ok = True
 
         try:
-            index = self.client.initIndex(p_index)
+            client = algoliasearch.Client(self.app_id,self.api_key)
+            index = client.initIndex(p_index)
             index.clearIndex()
             logger.info('Index %s deleted',p_index)
         except Exception as e:
@@ -40,7 +40,8 @@ class Algoliaio:
         """Sets the index settings
         """
         try:
-            index = self.client.initIndex(p_index)
+            client = algoliasearch.Client(self.app_id,self.api_key)
+            index = client.initIndex(p_index)
             index.setSettings(p_conf)
             logger.info('Index %s set',p_index)
         except Exception as e:
@@ -55,7 +56,9 @@ class Algoliaio:
             p_index:            algolia index where to store the docs
         """
 
-        index = self.client.initIndex(p_index)
+        client = algoliasearch.Client(self.app_id,self.api_key)
+        index = client.initIndex(p_index)
+
         # Loop untill receiving the "poison pill" item (meaning : no more element to read)
         poison_pill = False
         while not(poison_pill):
