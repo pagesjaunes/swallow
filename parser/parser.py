@@ -1,4 +1,4 @@
-from multiprocessing import TimeoutError
+from multiprocessing import TimeoutError,current_process
 from swallow.settings import logger
 import sys
 
@@ -14,15 +14,16 @@ def get_and_parse(p_inqueue,p_outqueue,p_process,**kwargs):
         p_process must take a "doc" as a first parameter
     """
 
+    current = current_process()
     while True:
         try:
-            logger.debug("Size of queues. in : %i / ou : %i",p_inqueue.qsize(),p_outqueue.qsize())
+            logger.debug("(%s) Size of queues. in : %i / ou : %i",current.name,p_inqueue.qsize(),p_outqueue.qsize())
 
             in_doc = p_inqueue.get()
 
             # Manage poison pill
             if in_doc is None:
-                logger.info("Parser has received 'poison pill' and is now ending ...")
+                logger.info("(%s) => Parser has received 'poison pill' and is now ending ...",current.name)
                 p_inqueue.task_done()
                 break
 
