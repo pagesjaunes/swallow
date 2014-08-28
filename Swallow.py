@@ -42,7 +42,7 @@ class Swallow:
             swal.run(nb_threads)
     """
 
-    def __init__(self):
+    def __init__(self, p_max_items_by_queue=None):
         """Class creation"""
 
         self.readers = None
@@ -50,8 +50,12 @@ class Swallow:
         self.writer_store_args = None
         self.process = None
         self.process_args = None
-        self.in_queue = JoinableQueue()
-        self.out_queue = JoinableQueue()
+        if not p_max_items_by_queue:
+            self.in_queue = JoinableQueue()
+            self.out_queue = JoinableQueue()
+        else:
+            self.in_queue = JoinableQueue(p_max_items_by_queue)
+            self.out_queue = JoinableQueue(p_max_items_by_queue)
 
     def run(self,p_nb_threads):
         logger.info('Running swallow process with %i threads' % p_nb_threads)
