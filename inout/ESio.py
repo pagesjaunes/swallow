@@ -119,4 +119,4 @@ class ESio:
             documents = helpers.scan(client=es, query=p_query, scroll= p_scroll_time, index=p_index, timeout=p_timeout)
         for doc in documents:
             logger.debug(doc)
-            p_queue.put(doc,block=True)
+            p_queue.put(doc)

@@ -50,26 +50,25 @@ class Swallow:
         self.writer_store_args = None
         self.process = None
         self.process_args = None
-        if not p_max_items_by_queue:
+        if p_max_items_by_queue is None:
             self.in_queue = JoinableQueue()
             self.out_queue = JoinableQueue()
         else:
             self.in_queue = JoinableQueue(p_max_items_by_queue)
             self.out_queue = JoinableQueue(p_max_items_by_queue)
 
-    def run(self,p_nb_threads):
-        logger.info('Running swallow process with %i threads' % p_nb_threads)
+    def run(self,p_processors_nb_threads,p_writer_nb_threads=None):
+        if p_writer_nb_threads is None:
+            p_writer_nb_threads = p_processors_nb_threads
+
+        logger.info('Running swallow process. Processor on %i threads / Writers on %i threads',p_processors_nb_threads,p_writer_nb_threads)
 
         start_time = datetime.datetime.now()
 
-        # In/Out queues
-        self.in_queue = JoinableQueue()
-        self.out_queue = JoinableQueue()
-
         read_worker = [Process(target=reader['reader'].scan_and_queue, args=(self.in_queue,),kwargs=(reader['args'])) for reader in self.readers]
         # read_worker = [Process(target=self.reader.scan_and_queue, args=(self.in_queue,),kwargs=(self.reader_scan_args))]
-        process_worker = [Process(target=get_and_parse, args=(self.in_queue,self.out_queue,self.process),kwargs=(self.process_args)) for i in range(p_nb_threads)]
-        write_worker = [Process(target=self.writer.dequeue_and_store, args=(self.out_queue,),kwargs=(self.writer_store_args)) for i in range(p_nb_threads)]
+        process_worker = [Process(target=get_and_parse, args=(self.in_queue,self.out_queue,self.process),kwargs=(self.process_args)) for i in range(p_processors_nb_threads)]
+        write_worker = [Process(target=self.writer.dequeue_and_store, args=(self.out_queue,),kwargs=(self.writer_store_args)) for i in range(p_writer_nb_threads)]
 
         # Running workers
         for work in read_worker:
