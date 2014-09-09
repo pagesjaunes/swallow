@@ -33,7 +33,7 @@ class CSVio:
                 if source_doc is None:
                     logger.debug("CSVio has received 'poison pill' and is now ending ...")
                     poison_pill = True
-                    self.csvfile.close()
+                    self.csvfilecursor[p_file].close()
                     p_queue.task_done()
                     break
 
