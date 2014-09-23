@@ -36,6 +36,26 @@ class Algoliaio:
 
         return delete_ok
 
+    def delete_document(self,p_index,p_id):
+        """Deletes a doc from an index
+            - p_index:      index where to delete the doc
+            - p_id:         id of the doc to delete
+        """
+        delete_ok = True
+
+        try:
+            client = algoliasearch.Client(self.app_id,self.api_key)
+            index = client.initIndex(p_index)
+            index.delete_object(p_id)
+            logger.info('%s deleted from %s',p_id, p_index)
+        except Exception as e:
+            logger.error('Error deleting the %s from index %s',p_id, p_index)
+            logger.error(e)
+            delete_ok = False
+
+        return delete_ok
+
+
     def set_settings(self,p_index,p_conf):
         """Sets the index settings
         """
