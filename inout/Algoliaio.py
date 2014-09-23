@@ -46,7 +46,7 @@ class Algoliaio:
         try:
             client = algoliasearch.Client(self.app_id,self.api_key)
             index = client.initIndex(p_index)
-            index.delete_object(p_id)
+            index.deleteObject(p_id)
             logger.info('%s deleted from %s',p_id, p_index)
         except Exception as e:
             logger.error('Error deleting the %s from index %s',p_id, p_index)
