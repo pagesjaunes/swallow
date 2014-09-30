@@ -17,6 +17,27 @@ class ESio:
         self.port = p_port
         self.bulk_size = p_bulksize
 
+    def set_mapping(self,p_index,p_mapping):
+        """Create an index with a given p_mapping
+
+            - p_index:     index to delete
+            - p_mapping:   mapping forced
+        """
+        try:
+            param = [{'host':self.host,'port':self.port}]
+            es = Elasticsearch(param)
+            logger.info('Connected to ES Server: %s',json.dumps(param))
+        except Exception as e:
+            logger.error('Connection failed to ES Server : %s',json.dumps(param))
+            logger.error(e)
+
+        try:
+            es.indices.create(index=p_index,body=p_mapping)
+            logger.info('Index %s created',p_index)
+        except Exception as e:
+            logger.error('Error creating the index %s',p_index)
+            logger.error(e)
+
     def clear_index(self,p_index):
         """Deletes and index
 
