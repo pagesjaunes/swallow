@@ -17,6 +17,32 @@ class ESio:
         self.port = p_port
         self.bulk_size = p_bulksize
 
+    def count(self,p_index,p_query={}):
+        """Gets the number of docs for a query
+
+            p_index:    elasticsearch index where to query
+            p_query:    the query to process
+
+            return the number of docs from the index p_index and the query p_query
+        """
+        try:
+            param = [{'host':self.host,'port':self.port}]
+            es = Elasticsearch(param)
+            logger.info('Connected to ES Server: %s',json.dumps(param))
+        except Exception as e:
+            logger.error('Connection failed to ES Server : %s',json.dumps(param))
+            logger.error(e)
+            sys.exit(EXIT_IO_ERROR)
+
+        try:
+            result = es.count(index=p_index,body=p_query)
+            logger.info('Count the number of items from %s for the query %s',p_index,p_query)
+        except Exception as e:
+            logger.error('Error querying the index %s with query %s',p_index,p_query)
+            logger.error(e)
+
+        return result['count']
+
     def set_mapping(self,p_index,p_mapping):
         """Create an index with a given p_mapping
 
