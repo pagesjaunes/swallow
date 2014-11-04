@@ -66,9 +66,13 @@ class Swallow:
         start_time = datetime.datetime.now()
 
         read_worker = [Process(target=reader['reader'].scan_and_queue, args=(self.in_queue,),kwargs=(reader['args'])) for reader in self.readers]
-        # read_worker = [Process(target=self.reader.scan_and_queue, args=(self.in_queue,),kwargs=(self.reader_scan_args))]
         process_worker = [Process(target=get_and_parse, args=(self.in_queue,self.out_queue,self.process),kwargs=(self.process_args)) for i in range(p_processors_nb_threads)]
-        write_worker = [Process(target=self.writer.dequeue_and_store, args=(self.out_queue,),kwargs=(self.writer_store_args)) for i in range(p_writer_nb_threads)]
+
+        # writers are optionnal
+        if self.writer is not None:
+            write_worker = [Process(target=self.writer.dequeue_and_store, args=(self.out_queue,),kwargs=(self.writer_store_args)) for i in range(p_writer_nb_threads)]
+        else:
+            write_worker = []
 
         # Running workers
         for work in read_worker:

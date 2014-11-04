@@ -100,7 +100,7 @@ class Algoliaio:
                 try:
                     # Bulk indexation
                     if len(bulk) > 0:
-                        logger.info("Indexing %i documents",len(bulk))
+                        logger.debug("Indexing %i documents",len(bulk))
                         index.addObjects(bulk)
                 except Exception as e:
                     logger.error("Bulk not indexed in algolia")
