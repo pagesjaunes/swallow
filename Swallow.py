@@ -42,7 +42,7 @@ class Swallow:
             swal.run(nb_threads)
     """
 
-    def __init__(self, p_max_items_by_queue=20000):
+    def __init__(self, p_max_items_by_queue=50000):
         """Class creation"""
 
         self.readers = None
