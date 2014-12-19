@@ -52,3 +52,78 @@ class Mongoio:
         for doc in documents:
             p_queue.put(doc)
 
+    def remove_items(self, p_collection, p_query):
+        """Execute a delete query on collection using p_query selection              
+
+            p_collection:        mongo collection where to store the docs;            
+            p_query:             selection query
+        """
+        try:            
+            self.mongo[p_collection].remove(p_query)
+            logger.info('Collection items removal done')
+        except PyMongoError as e:
+            logger.error('Failed to remove entries from %s',p_collection)
+            logger.error(e)
+            sys.exit(EXIT_IO_ERROR)
+
+    def count_items(self, p_collection, p_query):
+        """Return item count using p_query selection              
+
+            p_collection:        mongo collection to query;            
+            p_query:             selection query
+        """
+        try:            
+            return self.mongo[p_collection].find(p_query).count()
+            
+        except PyMongoError as e:
+            logger.error('Failed to count entries from %s',p_collection)
+            logger.error(e)
+            sys.exit(EXIT_IO_ERROR)
+
+    def dequeue_and_store(self,p_queue, p_collection):
+        """Gets docs from p_queue and stores them in a mongo collection
+             Stops dealing with the queue when receiving a "None" item
+
+            p_queue:             queue wich items are picked from. Elements has to be "list".
+            p_collection:        mongo collection where to store the docs;            
+        """
+        # uri for mongo connection
+        uri = 'mongodb://%s:%s@%s:%s/%s' % (self.user,self.password,self.host,self.port,self.base)
+        # Connect to mongo
+        try:
+            mongo_client = MongoClient(uri)
+            mongo_connection = mongo_client[self.base]
+            logger.info('Connection succeeded on %s',uri)
+        except PyMongoError as e:
+            logger.error('Failed to connect to %s',uri)
+            logger.error(e)
+            sys.exit(EXIT_IO_ERROR)
+
+        # Loop untill receiving the "poison pill" item (meaning : no more element to read)
+        poison_pill = False        
+
+        while not(poison_pill):
+            try:                
+                
+                source_doc = p_queue.get()
+
+                # Manage poison pill
+                if source_doc is None:
+                    logger.debug("Mongoio has received 'poison pill' and is now ending ...")
+                    poison_pill = True
+                    p_queue.task_done()
+                    break
+                
+                #insert into collection
+                try:                                                
+                    # mongo_connection[p_collection].insert(source_doc)
+                    mongo_connection[p_collection].update({'_id':source_doc['_id']},source_doc,upsert=True)
+                except Exception as e:
+                    logger.error("Document not inserted in Mongo Collection %s", source_doc['_id'])
+                    logger.error(e)                
+
+                p_queue.task_done()
+
+            except KeyboardInterrupt:
+                logger.info("Mongoio.dequeue_and_store : User interruption of the process")
+                sys.exit(EXIT_USER_INTERRUPT)
