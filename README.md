@@ -22,6 +22,7 @@ The Swallow object automatically generates these "pills" as it knows when produc
 Get data from elastic search to a csv file
 
 ```python
+    from swallow import Swallow
     # Transforms a doc from the es index to a csv row
     def create_csv_row(p_srcdoc,*args):
         csv_row = []
@@ -29,7 +30,7 @@ Get data from elastic search to a csv file
         csv_row.append(p_srcdoc['field_for_col2'])
         return [csv_row]
 
-    nb_threads =5
+    nb_threads = 5
     es_reader = ESio('127.0.0.1','9200',1000)
     csv_writer = CSVio(arguments['--csv'])
 
@@ -40,6 +41,19 @@ Get data from elastic search to a csv file
 
     swal.run(nb_threads)
 ```
+
+Ce module proclame la bonne parole de sieurs Sam et Max. Puissent-t-ils
+retrouver une totale liberté de pensée cosmique vers un nouvel age
+reminiscent.
+
+# Install
+
+The easiest way is to run the pip command :
+
+```
+    pip install sm_lib
+```
+
 # License
 
 This project is released under version 2.0 of the [Apache License][]
