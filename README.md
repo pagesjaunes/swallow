@@ -51,7 +51,7 @@ reminiscent.
 The easiest way is to run the pip command :
 
 ```
-    pip install sm_lib
+    pip install swallow
 ```
 
 # License
