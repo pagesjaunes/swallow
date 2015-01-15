@@ -54,6 +54,9 @@ The easiest way is to run the pip command :
     pip install swallow
 ```
 
+# Python version
+This lib requires python 3.2+
+
 # License
 
 This project is released under version 2.0 of the [Apache License][]
