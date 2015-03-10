@@ -2,6 +2,7 @@ from swallow.settings import logger, EXIT_IO_ERROR
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError
 import sys
+import time
 
 class Mongoio: 
     """Reads and writes documents from/to a MongoDB Collection"""
@@ -49,8 +50,19 @@ class Mongoio:
         # Each items is put into the queue
         documents.batch_size(100)
 
+        # time_for_x_items = 0
+        # num_items_processed = 0
+        # num_items_average = 1000
+        start_time = time.time()
         for doc in documents:
             p_queue.put(doc)
+            # logger.warn('In Queue size : %i',p_queue.qsize())
+        time_for_x_items = time.time()
+        # num_items_processed += 1
+        # if (num_items_processed % num_items_average) == 0:
+        #     logger.info("Average reading time : %fs (after %i items)", time_for_x_items/num_items_processed, num_items_processed)
+
+        logger.info("Average reading time : %fs", (time_for_x_items - start_time)/nb_docs)
 
     def remove_items(self, p_collection, p_query):
         """Execute a delete query on collection using p_query selection              
@@ -113,11 +125,21 @@ class Mongoio:
                     poison_pill = True
                     p_queue.task_done()
                     break
-                
+
+                #management of 'update/set' style request                 
+                try:
+                    find = source_doc['_mongo_find']
+                except KeyError:
+                    find = {'_id':source_doc['_id']}
+
+                try:
+                    update = source_doc['_mongo_update']
+                except KeyError:
+                    update = source_doc
+            
                 #insert into collection
-                try:                                                
-                    # mongo_connection[p_collection].insert(source_doc)
-                    mongo_connection[p_collection].update({'_id':source_doc['_id']},source_doc,upsert=True)
+                try:                                                                        
+                    mongo_connection[p_collection].update(find,update,upsert=True)
                 except Exception as e:
                     logger.error("Document not inserted in Mongo Collection %s", source_doc['_id'])
                     logger.error(e)                
