@@ -1,4 +1,4 @@
-from multiprocessing import TimeoutError,current_process
+from multiprocessing import TimeoutError,current_process,Queue
 from swallow.settings import logger
 import sys
 
@@ -15,25 +15,31 @@ def get_and_parse(p_inqueue,p_outqueue,p_process,**kwargs):
     """
 
     current = current_process()
+
     while True:
         try:
             logger.debug("(%s) Size of queues. in : %i / ou : %i",current.name,p_inqueue.qsize(),p_outqueue.qsize())
+            
+            try:
+                in_doc = p_inqueue.get(False)
+            except Exception:
+                logger.info("Nothing to get in the Queue")
+            else:
+                # Manage poison pill
+                if in_doc is None:
+                    logger.info("(%s) => Parser has received 'poison pill' and is now ending ...",current.name)
+                    p_inqueue.task_done()
+                    break
 
-            in_doc = p_inqueue.get()
+                # Call the proc with the arg list (keeping the * means : unwrap the list when calling the function)
 
-            # Manage poison pill
-            if in_doc is None:
-                logger.info("(%s) => Parser has received 'poison pill' and is now ending ...",current.name)
+                out_doc = p_process(in_doc,**kwargs)
+
+                for doc in out_doc:
+                    p_outqueue.put(doc)
+
                 p_inqueue.task_done()
-                break
 
-            # Call the proc with the arg list (keeping the * means : unwrap the list when calling the function)
-            out_doc = p_process(in_doc,**kwargs)
-
-            for doc in out_doc:
-                p_outqueue.put(doc)
-
-            p_inqueue.task_done()
         except TimeoutError:
             logger.warn('Timeout exception while parsing with %s method',p_process)
         except KeyboardInterrupt:
