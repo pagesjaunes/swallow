@@ -91,15 +91,17 @@ class ESio:
 
         return delete_ok
 
-    def dequeue_and_store(self,p_queue,p_index):
+    def dequeue_and_store(self,p_queue,p_index,p_timeout=10,p_nbmax_retry=3):
         """Gets docs from p_queue and stores them in the csv file
              Stops dealing with the queue when receiving a "None" item
 
-            p_queue:             queue wich items are picked from. Elements has to be "list".
+            p_queue:            queue wich items are picked from. Elements has to be "list".
             p_index:            elasticsearch index where to store the docs
+            p_timeout:          timeout for bulk (default is 10s)
+            p_nbmax_retry:      number of tries when failing on a request (default is 3)
         """
         try:
-            param = [{'host':self.host,'port':self.port}]
+            param = [{'host':self.host,'port':self.port,'timeout':p_timeout,'max_retries':p_nbmax_retry,'retry_on_timeout':True}]
             es = Elasticsearch(param)
             logger.info('Connected to ES Server: %s',json.dumps(param))
         except Exception as e:
@@ -137,6 +139,7 @@ class ESio:
                 except Exception as e:
                     logger.error("Bulk not indexed in ES")
                     logger.error(e)
+
             except KeyboardInterrupt:
                 logger.info("ESio.dequeue_and_store : User interruption of the process")
                 sys.exit(EXIT_USER_INTERRUPT)
@@ -160,10 +163,13 @@ class ESio:
             logger.error(e)
             sys.exit(EXIT_IO_ERROR)
 
-        if 'p_doctype' is not None:
-            documents = helpers.scan(client=es, query=p_query, scroll=p_scroll_time, index=p_index, doc_type=p_doctype, timeout=p_timeout)
-        else:
-            documents = helpers.scan(client=es, query=p_query, scroll= p_scroll_time, index=p_index, timeout=p_timeout)
-        for doc in documents:
-            logger.debug(doc)
-            p_queue.put(doc)
+        try:
+            if 'p_doctype' is not None:
+                documents = helpers.scan(client=es, query=p_query, scroll=p_scroll_time, index=p_index, doc_type=p_doctype, timeout=p_timeout)
+            else:
+                documents = helpers.scan(client=es, query=p_query, scroll= p_scroll_time, index=p_index, timeout=p_timeout)
+            for doc in documents:
+                logger.debug(doc)
+                p_queue.put(doc)
+        except Exception as e:
+            logger.info("Error while scanning ES index %s with query %s",p_index,p_query)
