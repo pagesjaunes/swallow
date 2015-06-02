@@ -2,6 +2,7 @@ from swallow.settings import logger, EXIT_IO_ERROR, EXIT_USER_INTERRUPT
 from elasticsearch import Elasticsearch, helpers
 import json
 import sys
+import time
 
 class ESio: 
     """Reads and Writes documents from/to elasticsearch"""
@@ -130,21 +131,31 @@ class ESio:
                     bulk.append(source_doc)
                     p_queue.task_done()
 
-                try:
-                    # Bulk indexation
-                    if len(bulk) > 0:
-                        logger.debug("Indexing %i documents",len(bulk))
-                        helpers.bulk(es, bulk, raise_on_error=True)
-                        # es.index(index=self.index,doc_type=p_doctype,body=source_doc)
-                except Exception as e:
-                    logger.error("Bulk not indexed in ES")
-                    logger.error(e)
+                try_counter = 1
+                is_indexed = False
+                while try_counter <= p_nbmax_retry and not is_indexed:
+                    try:
+                        # Bulk indexation
+                        if len(bulk) > 0:
+                            logger.debug("Indexing %i documents",len(bulk))
+                            helpers.bulk(es, bulk, raise_on_error=True)
+                            # es.index(index=self.index,doc_type=p_doctype,body=source_doc)
+                    except Exception as e:
+                        logger.error("Bulk not indexed in ES - Waiting for 10s before next retry (current is %i)",try_counter)
+                        logger.error(e)
+                        try_counter += 1
+                        time.sleep(10)
+                    else:
+                        is_indexed = True
+
+                if not is_indexed:
+                    logger.error("Bulk not indexed in elasticsearch : operation aborted after %i retries",try_counter-1)                  
 
             except KeyboardInterrupt:
                 logger.info("ESio.dequeue_and_store : User interruption of the process")
                 sys.exit(EXIT_USER_INTERRUPT)
 
-    def scan_and_queue(self,p_queue,p_index,p_query={},p_doctype=None,p_scroll_time='60m',p_timeout='60m'):
+    def scan_and_queue(self,p_queue,p_index,p_query={},p_doctype=None,p_scroll_time='5m',p_timeout='1m'):
         """Reads docs from an es index according to a query and pushes them to the queue
 
             p_queue:         Queue where items are pushed to
@@ -165,9 +176,9 @@ class ESio:
 
         try:
             if 'p_doctype' is not None:
-                documents = helpers.scan(client=es, query=p_query, scroll=p_scroll_time, index=p_index, doc_type=p_doctype, timeout=p_timeout)
+                documents = helpers.scan(client=es, query=p_query, size=1000, scroll=p_scroll_time, index=p_index, doc_type=p_doctype, timeout=p_timeout)
             else:
-                documents = helpers.scan(client=es, query=p_query, scroll= p_scroll_time, index=p_index, timeout=p_timeout)
+                documents = helpers.scan(client=es, query=p_query, size=1000, scroll= p_scroll_time, index=p_index, timeout=p_timeout)
             for doc in documents:
                 logger.debug(doc)
                 p_queue.put(doc)
