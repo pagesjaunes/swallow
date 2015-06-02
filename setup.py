@@ -14,7 +14,7 @@ def main():
         author_email = 'fdepaulis@pagesjaunes.fr',
         url = 'https://github.com/pagesjaunes/swallow',
         packages=find_packages(),
-        install_requires = ['algoliasearch==1.5.*','elasticsearch==1.5.*','pymongo=3.0.*']
+        install_requires = ["algoliasearch >= 1.5.0, < 2","elasticsearch >= 1.5.0, < 2","pymongo >= 3.0.0, < 4"]
     )
 
 if __name__ == "__main__":
