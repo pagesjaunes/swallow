@@ -141,10 +141,9 @@ class ESio:
                             helpers.bulk(es, bulk, raise_on_error=True)
                             # es.index(index=self.index,doc_type=p_doctype,body=source_doc)
                     except Exception as e:
-                        logger.error("Bulk not indexed in ES - Waiting for 10s before next retry (current is %i)",try_counter)
+                        logger.error("Bulk not indexed in ES - Retry n°%i",try_counter)
                         logger.error(e)
                         try_counter += 1
-                        time.sleep(10)
                     else:
                         is_indexed = True
 
