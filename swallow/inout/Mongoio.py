@@ -35,12 +35,13 @@ class Mongoio:
             logger.error(e)
             sys.exit(EXIT_IO_ERROR)
 
-    def scan_and_queue(self,p_queue,p_collection,p_query):
+    def scan_and_queue(self,p_queue,p_collection,p_query,p_batch_size=100):
         """Reads docs from a collection according to a query and pushes them to the queue
 
             p_queue:         Queue where items are pushed to
             p_collection:    Collection where items are picked from
             p_query:        MongoDB query for scanning the collection
+            p_batch_size:   Number of read docs by iteration
         """
 
         # Scan collection according to the query
@@ -49,7 +50,7 @@ class Mongoio:
         logger.info('Scanning %i items in %s',nb_docs, p_collection)
 
         # Each items is put into the queue
-        documents.batch_size(100)
+        documents.batch_size(p_batch_size)
 
         # time_for_x_items = 0
         # num_items_processed = 0
