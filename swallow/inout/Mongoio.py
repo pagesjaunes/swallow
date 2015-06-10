@@ -7,7 +7,7 @@ import time
 class Mongoio: 
     """Reads and writes documents from/to a MongoDB Collection"""
 
-    def __init__(self,p_host,p_port,p_base,p_user,p_password):
+    def __init__(self,p_host,p_port,p_base,p_user,p_password,p_connect_timeout=60000):
         """Class creation
 
             p_host:     Mongo Server address
@@ -21,9 +21,10 @@ class Mongoio:
         self.base = p_base
         self.user = p_user
         self.password = p_password
+        self.connect_timeout = p_connect_timeout
 
         # uri for mongo connection
-        uri = 'mongodb://%s:%s@%s:%s/%s' % (self.user,self.password,self.host,self.port,self.base)
+        uri = 'mongodb://%s:%s@%s:%s/%s?connectTimeoutMS=' % (self.user,self.password,self.host,self.port,self.base,self.connect_timeout)
         # Connect to mongo
         try:
             mongo_client = MongoClient(uri)
@@ -100,7 +101,7 @@ class Mongoio:
             p_collection:        mongo collection where to store the docs;            
         """
         # uri for mongo connection
-        uri = 'mongodb://%s:%s@%s:%s/%s' % (self.user,self.password,self.host,self.port,self.base)
+        uri = 'mongodb://%s:%s@%s:%s/%s?connectTimeoutMS=' % (self.user,self.password,self.host,self.port,self.base,self.connect_timeout)
         # Connect to mongo
         try:
             mongo_client = MongoClient(uri)
