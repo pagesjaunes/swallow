@@ -24,7 +24,7 @@ class Mongoio:
         self.connect_timeout = p_connect_timeout
 
         # uri for mongo connection
-        uri = 'mongodb://%s:%s@%s:%s/%s?connectTimeoutMS=' % (self.user,self.password,self.host,self.port,self.base,self.connect_timeout)
+        uri = 'mongodb://%s:%s@%s:%s/%s?connectTimeoutMS=%i' % (self.user,self.password,self.host,self.port,self.base,self.connect_timeout)
         # Connect to mongo
         try:
             mongo_client = MongoClient(uri)
@@ -52,19 +52,16 @@ class Mongoio:
         # Each items is put into the queue
         documents.batch_size(p_batch_size)
 
-        # time_for_x_items = 0
-        # num_items_processed = 0
-        # num_items_average = 1000
         start_time = time.time()
         for doc in documents:
             p_queue.put(doc)
             # logger.warn('In Queue size : %i',p_queue.qsize())
-        time_for_x_items = time.time()
-        # num_items_processed += 1
-        # if (num_items_processed % num_items_average) == 0:
-        #     logger.info("Average reading time : %fs (after %i items)", time_for_x_items/num_items_processed, num_items_processed)
+        time_for_x_items = time.time()        
 
-        logger.info("Average reading time : %fs", (time_for_x_items - start_time)/nb_docs)
+        if nb_docs == 0:
+            logger.info("No document to process")
+        else:    
+            logger.info("Average reading time : %fs", (time_for_x_items - start_time)/nb_docs)
 
     def remove_items(self, p_collection, p_query):
         """Execute a delete query on collection using p_query selection              
@@ -102,7 +99,7 @@ class Mongoio:
             p_collection:        mongo collection where to store the docs;            
         """
         # uri for mongo connection
-        uri = 'mongodb://%s:%s@%s:%s/%s?connectTimeoutMS=' % (self.user,self.password,self.host,self.port,self.base,self.connect_timeout)
+        uri = 'mongodb://%s:%s@%s:%s/%s?connectTimeoutMS=%i' % (self.user,self.password,self.host,self.port,self.base,self.connect_timeout)
         # Connect to mongo
         try:
             mongo_client = MongoClient(uri)
