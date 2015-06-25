@@ -77,8 +77,9 @@ class Algoliaio:
         try:
             client = algoliasearch.Client(self.app_id,self.api_key)
             index = client.init_index(p_index)
-            index.get_settings()
+            result = index.get_settings()
             logger.info('Index %s get',p_index)
+            return result
         except Exception as e:
             logger.error('Error getting settings of %s',p_index)
             logger.error(e)
