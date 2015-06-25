@@ -71,6 +71,19 @@ class Algoliaio:
             logger.error(e)
 
 
+    def get_settings(self,p_index):
+        """Gets the index settings
+        """
+        try:
+            client = algoliasearch.Client(self.app_id,self.api_key)
+            index = client.init_index(p_index)
+            index.get_settings(p_conf)
+            logger.info('Index %s get',p_index)
+        except Exception as e:
+            logger.error('Error getting settings of %s',p_index)
+            logger.error(e)
+
+
     def dequeue_and_store(self,p_queue,p_index,p_nbmax_retry=3):
         """Gets docs from p_queue and stores them in the algolia
              Stops dealing with the queue when receiving a "None" item
