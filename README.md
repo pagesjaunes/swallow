@@ -32,11 +32,11 @@ Get data from elastic search to a csv file
 
     nb_threads = 5
     es_reader = ESio('127.0.0.1','9200',1000)
-    csv_writer = CSVio(arguments['--csv'])
+    csv_writer = CSVio()
 
     swal = Swallow()
     swal.set_reader(es_reader,p_index='my_es_index',p_doctype='my_doc_type',p_query={})
-    swal.set_writer(csv_writer)
+    swal.set_writer(csv_writer,p_file=arguments['--csv'])
     swal.set_process(create_csv_row)
 
     swal.run(nb_threads)
