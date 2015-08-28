@@ -54,6 +54,15 @@ The easiest way is to run the pip command :
     pip install swallow
 ```
 
+# Tests
+
+There are few unit tests but they keep growing !
+They required py.test to be ran properly. From the home directory just launch :
+
+```
+    py.test test/
+```
+
 # Python version
 This lib requires python 3.2+
 
