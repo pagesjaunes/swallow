@@ -98,17 +98,6 @@ class Mongoio:
             p_queue:             queue wich items are picked from. Elements has to be "list".
             p_collection:        mongo collection where to store the docs;            
         """
-        # uri for mongo connection
-        uri = 'mongodb://%s:%s@%s:%s/%s?connectTimeoutMS=%i' % (self.user,self.password,self.host,self.port,self.base,self.connect_timeout)
-        # Connect to mongo
-        try:
-            mongo_client = MongoClient(uri)
-            mongo_connection = mongo_client[self.base]
-            logger.info('Connection succeeded on %s',uri)
-        except PyMongoError as e:
-            logger.error('Failed to connect to %s',uri)
-            logger.error(e)
-            sys.exit(EXIT_IO_ERROR)
 
         # Loop untill receiving the "poison pill" item (meaning : no more element to read)
         poison_pill = False        
@@ -138,7 +127,7 @@ class Mongoio:
             
                 #insert into collection
                 try:                                                                        
-                    mongo_connection[p_collection].update(find,update,upsert=True)
+                    self.mongo[p_collection].update(find,update,upsert=True)
                 except Exception as e:
                     logger.error("Document not inserted in Mongo Collection %s", source_doc['_id'])
                     logger.error(e)                
