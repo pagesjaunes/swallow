@@ -17,6 +17,7 @@
 
         Example : 
 
+            from swallow import Swallow
             # Transforms a doc from the es index to a csv row
             def create_csv_row(p_srcdoc,*args):
                 csv_row = []
@@ -24,7 +25,7 @@
                 csv_row.append(p_srcdoc['field_for_col2'])
                 return [csv_row]
 
-            nb_threads =5
+            nb_threads = 5
             es_reader = ESio('127.0.0.1','9200',1000)
             csv_writer = CSVio(arguments['--csv'])
 
@@ -36,4 +37,4 @@
             swal.run(nb_threads)
     """
 
-__version__ = "1.3.8"
+__version__ = "1.4.0"
