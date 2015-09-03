@@ -23,18 +23,6 @@ class Mongoio:
         self.password = p_password
         self.connect_timeout = p_connect_timeout
 
-        # uri for mongo connection
-        uri = 'mongodb://%s:%s@%s:%s/%s?connectTimeoutMS=%i' % (self.user,self.password,self.host,self.port,self.base,self.connect_timeout)
-        # Connect to mongo
-        try:
-            mongo_client = MongoClient(uri)
-            self.mongo = mongo_client[self.base]
-            logger.info('Connection succeeded on %s',uri)
-        except PyMongoError as e:
-            logger.error('Failed to connect to %s',uri)
-            logger.error(e)
-            sys.exit(EXIT_IO_ERROR)
-
     def scan_and_queue(self,p_queue,p_collection,p_query,p_batch_size=100):
         """Reads docs from a collection according to a query and pushes them to the queue
 
@@ -43,9 +31,20 @@ class Mongoio:
             p_query:        MongoDB query for scanning the collection
             p_batch_size:   Number of read docs by iteration
         """
+        # uri for mongo connection
+        uri = 'mongodb://%s:%s@%s:%s/%s?connectTimeoutMS=%i' % (self.user,self.password,self.host,self.port,self.base,self.connect_timeout)
+        # Connect to mongo
+        try:
+            mongo_client = MongoClient(uri)
+            mongo_connect = mongo_client[self.base]
+            logger.info('Connection succeeded on %s',uri)
+        except PyMongoError as e:
+            logger.error('Failed to connect to %s',uri)
+            logger.error(e)
+            sys.exit(EXIT_IO_ERROR)
 
         # Scan collection according to the query
-        documents = self.mongo[p_collection].find(p_query)
+        documents = mongo_connect[p_collection].find(p_query)
         nb_docs = documents.count()
         logger.info('Scanning %i items in %s',nb_docs, p_collection)
 
@@ -69,8 +68,21 @@ class Mongoio:
             p_collection:        mongo collection where to store the docs;            
             p_query:             selection query
         """
+
+        # uri for mongo connection
+        uri = 'mongodb://%s:%s@%s:%s/%s?connectTimeoutMS=%i' % (self.user,self.password,self.host,self.port,self.base,self.connect_timeout)
+        # Connect to mongo
+        try:
+            mongo_client = MongoClient(uri)
+            mongo_connect = mongo_client[self.base]
+            logger.info('Connection succeeded on %s',uri)
+        except PyMongoError as e:
+            logger.error('Failed to connect to %s',uri)
+            logger.error(e)
+            sys.exit(EXIT_IO_ERROR)
+
         try:            
-            self.mongo[p_collection].remove(p_query)
+            mongo_connect[p_collection].remove(p_query)
             logger.info('Collection items removal done')
         except PyMongoError as e:
             logger.error('Failed to remove entries from %s',p_collection)
@@ -83,8 +95,21 @@ class Mongoio:
             p_collection:        mongo collection to query;            
             p_query:             selection query
         """
+
+        # uri for mongo connection
+        uri = 'mongodb://%s:%s@%s:%s/%s?connectTimeoutMS=%i' % (self.user,self.password,self.host,self.port,self.base,self.connect_timeout)
+        # Connect to mongo
+        try:
+            mongo_client = MongoClient(uri)
+            mongo_connect = mongo_client[self.base]
+            logger.info('Connection succeeded on %s',uri)
+        except PyMongoError as e:
+            logger.error('Failed to connect to %s',uri)
+            logger.error(e)
+            sys.exit(EXIT_IO_ERROR)
+
         try:            
-            return self.mongo[p_collection].find(p_query).count()
+            return mongo_connect[p_collection].find(p_query).count()
             
         except PyMongoError as e:
             logger.error('Failed to count entries from %s',p_collection)
@@ -98,6 +123,18 @@ class Mongoio:
             p_queue:             queue wich items are picked from. Elements has to be "list".
             p_collection:        mongo collection where to store the docs;            
         """
+
+        # uri for mongo connection
+        uri = 'mongodb://%s:%s@%s:%s/%s?connectTimeoutMS=%i' % (self.user,self.password,self.host,self.port,self.base,self.connect_timeout)
+        # Connect to mongo
+        try:
+            mongo_client = MongoClient(uri)
+            mongo_connect = mongo_client[self.base]
+            logger.info('Connection succeeded on %s',uri)
+        except PyMongoError as e:
+            logger.error('Failed to connect to %s',uri)
+            logger.error(e)
+            sys.exit(EXIT_IO_ERROR)
 
         # Loop untill receiving the "poison pill" item (meaning : no more element to read)
         poison_pill = False        
@@ -127,7 +164,7 @@ class Mongoio:
             
                 #insert into collection
                 try:                                                                        
-                    self.mongo[p_collection].update(find,update,upsert=True)
+                    mongo_connect[p_collection].update(find,update,upsert=True)
                 except Exception as e:
                     logger.error("Document not inserted in Mongo Collection %s", source_doc['_id'])
                     logger.error(e)                
