@@ -46,6 +46,68 @@ Ce module proclame la bonne parole de sieurs Sam et Max. Puissent-t-ils
 retrouver une totale liberté de pensée cosmique vers un nouvel age
 reminiscent.
 
+# Connector doc
+## Connect Mongo
+### For reading
+
+```python
+    # Swallow instance : deals with queues and multiprocessing
+    swal = Swallow()
+
+    # reader Mongo using Replicaset
+    reader = Mongoio('localhost',27017,'myBase','user','passwd',p_rs_xtra_nodes=['localhost:27018','localhost:27019'],p_rs_name='foo')
+
+    # A much simpler connection to a single host would be :
+    # reader = Mongoio('localhost',27017,'myBase','user','passwd')
+
+    # writting in ES
+    writer = ESio('localhost',9200,1000)
+
+    # Reading all doc from "myCollection"
+    swal.set_reader(reader,p_collection='myCollection',p_query={})
+
+    # Writting to myIndex
+    swal.set_writer(writer,p_index='myIndex')
+    swal.set_process(myProcessFunction)
+
+    swal.run(conf['nb_threads'])
+```
+
+## Connect ElasticSearch
+This copy an index from an host to another
+```python
+    # Swallow instance : deals with queues and multiprocessing
+    swal = Swallow()
+
+    # reader ES
+    # host, port, bulk_size
+    reader = ESio('localhost',9200,1000)
+
+    # writer is ES too
+    writer = ESio('anotherhost',10200,1000)
+
+    # p_query = {} => select all the doc from my_index
+    swal.set_reader(reader,p_index=my_index,p_query={})
+    swal.set_writer(writer,p_index=a_new_index)
+    swal.set_process(pass_doc)
+
+    swal.run(4)
+```
+
+with this process function :
+
+```python
+    def pass_doc(p_srcdoc):
+
+        document = {
+            "_type": p_srcdoc['_type'],
+            "_source": p_srcdoc['_source'],
+            "_id": p_srcdoc['_id']
+        }
+
+        return [document]
+```
+
 # Install
 
 The easiest way is to run the pip command :
