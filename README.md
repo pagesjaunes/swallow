@@ -63,71 +63,72 @@ The constructor takes these parameters :
     * p_rs_name=None (default None) : replicaset name
 
 ```python
-    # Simple connection
-    mongo_connector = Mongoio('localhost',27017,'myBase','user','passwd')
+# Simple connection
+mongo_connector = Mongoio('localhost',27017,'myBase','user','passwd')
 
-    # Replicaset "foo" connection
-    mongo_connector = Mongoio('localhost',27017,'myBase','user','passwd',p_rs_name="foo")
+# Replicaset "foo" connection
+mongo_connector = Mongoio('localhost',27017,'myBase','user','passwd',p_rs_name="foo")
 
-    # Replicaset "foo" connection with extra hosts
-    mongo_connector = Mongoio('localhost',27017,'myBase','user','passwd',p_rs_name="foo",p_rs_xtra_nodes=['localhost:27018','localhost:27019'])
+# Replicaset "foo" connection with extra hosts
+mongo_connector = Mongoio('localhost',27017,'myBase','user','passwd',p_rs_name="foo",p_rs_xtra_nodes=['localhost:27018','localhost:27019'])
 ```
 
 Then use the object for reading or storing elements
-Reading :
+
+####Reading :
 
     * p_collection : Collection where items are picked from
     * p_query : MongoDB query for scanning the collection
     * p_batch_size (default 100) : Number of read docs by iteration
  
 ```python
-    # Reading all doc from "myCollection"
-    swal.set_reader(mongo_connector,p_collection='myCollection',p_query={})
+# Reading all doc from "myCollection"
+swal.set_reader(mongo_connector,p_collection='myCollection',p_query={})
 ```
 
-Storing :
+####Storing :
 
-    * p_collection:        mongo collection where to store the docs;            
+* p_collection: mongo collection where to store the docs
 
 ```python
-    # Writting to myCollection
-    swal.set_writer(mongo_connector,p_collection='myIndex')
+# Writting to myCollection
+swal.set_writer(mongo_connector,p_collection='myIndex')
 ```
 
 ## Connect ElasticSearch
 This copy an index from an host to another
 
 ```python
-    # Swallow instance : deals with queues and multiprocessing
-    swal = Swallow()
+# Swallow instance : deals with queues and multiprocessing
+swal = Swallow()
 
-    # reader ES
-    # host, port, bulk_size
-    reader = ESio('localhost',9200,1000)
+# reader ES
+# host, port, bulk_size
+reader = ESio('localhost',9200,1000)
 
-    # writer is ES too
-    writer = ESio('anotherhost',10200,1000)
+# writer is ES too
+writer = ESio('anotherhost',10200,1000)
 
-    # p_query = {} => select all the doc from my_index
-    swal.set_reader(reader,p_index=my_index,p_query={})
-    swal.set_writer(writer,p_index=a_new_index)
-    swal.set_process(pass_doc)
+# p_query = {} => select all the doc from my_index
+swal.set_reader(reader,p_index=my_index,p_query={})
+swal.set_writer(writer,p_index=a_new_index)
+swal.set_process(pass_doc)
 
-    swal.run(4)
+swal.run(4)
 ```
 
 with this process function :
 
 ```python
-    def pass_doc(p_srcdoc):
+def pass_doc(p_srcdoc):
 
-        document = {
-            "_type": p_srcdoc['_type'],
-            "_source": p_srcdoc['_source'],
-            "_id": p_srcdoc['_id']
-        }
+    document = {
+        "_type": p_srcdoc['_type'],
+        "_source": p_srcdoc['_source'],
+        "_id": p_srcdoc['_id']
+    }
 
-        return [document]
+    return [document]
 ```
 
 # Install
@@ -135,7 +136,7 @@ with this process function :
 The easiest way is to run the pip command :
 
 ```
-    pip install swallow
+pip install swallow
 ```
 
 # Tests
@@ -144,7 +145,7 @@ There are few unit tests but they keep growing !
 They required py.test to be ran properly. From the home directory just launch :
 
 ```
-    py.test test/
+py.test test/
 ```
 
 # Python version
