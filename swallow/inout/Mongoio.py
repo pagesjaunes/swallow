@@ -7,21 +7,42 @@ import time
 class Mongoio: 
     """Reads and writes documents from/to a MongoDB Collection"""
 
-    def __init__(self,p_host,p_port,p_base,p_user,p_password,p_connect_timeout=60000):
+    def __init__(self,p_host,p_port,p_base,p_user,p_password,p_connect_timeout=60000,p_rs_xtra_nodes=None,p_rs_name=None):
         """Class creation
 
-            p_host:     Mongo Server address
-            p_port:        Mongo Server port
-            p_base:        Mongo base
-            p_user:        Mongo user
-            p_password:    Mongo password
+            p_host:             Mongo Server address
+            p_port:             Mongo Server port
+            p_base:             Mongo base
+            p_user:             Mongo user
+            p_password:         Mongo password
+            p_rs_xtra_nodes:    ReplicaSet extra host/port list : ['localhost:27017','myhost.mydom:27018']. The extra hosts/port
+                                of the rs (the p_host,p_port is also added to the list)
+            p_rs_name:          ReplicaSet Name
         """
-        self.host = p_host
-        self.port = p_port
+        self.host = [p_host+':'+str(p_port)]
         self.base = p_base
         self.user = p_user
         self.password = p_password
         self.connect_timeout = p_connect_timeout
+        
+        # Add extra hosts:port to the list
+        if p_rs_xtra_nodes:
+            self.host = self.host + p_rs_xtra_nodes
+        if p_rs_name:
+            self.rs_name = p_rs_name
+        else:
+            self.rs_name = None
+
+
+    def _get_mongo_uri(self):
+        """
+            Builds the mongo connection uri from the object fields
+        """
+        r_uri = 'mongodb://%s:%s@%s/%s?connectTimeoutMS=%i' % (self.user,self.password,",".join(self.host),self.base,self.connect_timeout)
+        if self.rs_name:
+            r_uri = r_uri + "&replicaSet=" + self.rs_name
+
+        return r_uri
 
     def scan_and_queue(self,p_queue,p_collection,p_query,p_batch_size=100):
         """Reads docs from a collection according to a query and pushes them to the queue
@@ -32,7 +53,8 @@ class Mongoio:
             p_batch_size:   Number of read docs by iteration
         """
         # uri for mongo connection
-        uri = 'mongodb://%s:%s@%s:%s/%s?connectTimeoutMS=%i' % (self.user,self.password,self.host,self.port,self.base,self.connect_timeout)
+        uri = self._get_mongo_uri()
+
         # Connect to mongo
         try:
             mongo_client = MongoClient(uri)
@@ -70,7 +92,8 @@ class Mongoio:
         """
 
         # uri for mongo connection
-        uri = 'mongodb://%s:%s@%s:%s/%s?connectTimeoutMS=%i' % (self.user,self.password,self.host,self.port,self.base,self.connect_timeout)
+        uri = self._get_mongo_uri()
+
         # Connect to mongo
         try:
             mongo_client = MongoClient(uri)
@@ -97,7 +120,8 @@ class Mongoio:
         """
 
         # uri for mongo connection
-        uri = 'mongodb://%s:%s@%s:%s/%s?connectTimeoutMS=%i' % (self.user,self.password,self.host,self.port,self.base,self.connect_timeout)
+        uri = self._get_mongo_uri()
+
         # Connect to mongo
         try:
             mongo_client = MongoClient(uri)
@@ -125,7 +149,8 @@ class Mongoio:
         """
 
         # uri for mongo connection
-        uri = 'mongodb://%s:%s@%s:%s/%s?connectTimeoutMS=%i' % (self.user,self.password,self.host,self.port,self.base,self.connect_timeout)
+        uri = self._get_mongo_uri()
+
         # Connect to mongo
         try:
             mongo_client = MongoClient(uri)
