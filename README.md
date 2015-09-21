@@ -48,33 +48,55 @@ reminiscent.
 
 # Connector doc
 ## Connect Mongo
-### For reading
+
+### Create the object
+
+The constructor takes these parameters :
+
+    * p_host : Mongo Server host. If using a replicaset, can be the Master Node.
+    * p_port : Mongo Server port. If using a replicaset, can be the Master Node Port.
+    * p_base : Mongo base name.
+    * p_user : User that access the mongo base
+    * p_password : Passwd for accessing the mongo base
+    * p_connect_timeout (default 60000) : timeout in MS before closing a connection
+    * p_rs_xtra_nodes=None (default None) : replicaset node list (added to the host given with p_host) : comma separated string list ("host:port","host:port", ...)
+    * p_rs_name=None (default None) : replicaset name
 
 ```python
-    # Swallow instance : deals with queues and multiprocessing
-    swal = Swallow()
+    # Simple connection
+    mongo_connector = Mongoio('localhost',27017,'myBase','user','passwd')
 
-    # reader Mongo using Replicaset
-    reader = Mongoio('localhost',27017,'myBase','user','passwd',p_rs_xtra_nodes=['localhost:27018','localhost:27019'],p_rs_name='foo')
+    # Replicaset "foo" connection
+    mongo_connector = Mongoio('localhost',27017,'myBase','user','passwd',p_rs_name="foo")
 
-    # A much simpler connection to a single host would be :
-    # reader = Mongoio('localhost',27017,'myBase','user','passwd')
+    # Replicaset "foo" connection with extra hosts
+    mongo_connector = Mongoio('localhost',27017,'myBase','user','passwd',p_rs_name="foo",p_rs_xtra_nodes=['localhost:27018','localhost:27019'])
+```
 
-    # writting in ES
-    writer = ESio('localhost',9200,1000)
+Then use the object for reading or storing elements
+Reading :
 
+    * p_collection : Collection where items are picked from
+    * p_query : MongoDB query for scanning the collection
+    * p_batch_size (default 100) : Number of read docs by iteration
+ 
+```python
     # Reading all doc from "myCollection"
-    swal.set_reader(reader,p_collection='myCollection',p_query={})
+    swal.set_reader(mongo_connector,p_collection='myCollection',p_query={})
+```
 
-    # Writting to myIndex
-    swal.set_writer(writer,p_index='myIndex')
-    swal.set_process(myProcessFunction)
+Storing :
 
-    swal.run(conf['nb_threads'])
+    * p_collection:        mongo collection where to store the docs;            
+
+```python
+    # Writting to myCollection
+    swal.set_writer(mongo_connector,p_collection='myIndex')
 ```
 
 ## Connect ElasticSearch
 This copy an index from an host to another
+
 ```python
     # Swallow instance : deals with queues and multiprocessing
     swal = Swallow()
