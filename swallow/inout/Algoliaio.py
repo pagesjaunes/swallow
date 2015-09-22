@@ -136,3 +136,25 @@ class Algoliaio:
             except KeyboardInterrupt:
                 logger.info("ESio.dequeue_and_store : User interruption of the process")
                 sys.exit(1)
+
+    def scan_and_queue(self,p_queue,p_index,p_query={}):
+        """Reads docs from an Algolia index according to a query and pushes them to the queue
+
+            p_queue:        Queue where items are pushed to
+            p_index:        Index where items are picked from
+            p_query:        query for scanning the index
+        """
+        try:
+            client = algoliasearch.Client(self.app_id,self.api_key)
+            index = client.init_index(p_index)
+        except Exception as e:
+            logger.error(e)
+            sys.exit(EXIT_IO_ERROR)
+
+        try:
+            documents = res = index.browse_all(p_query)
+            
+            for doc in documents:
+                p_queue.put(doc)
+        except Exception as e:
+            logger.info("Error while scanning Algolia index %s with query %s",p_index,p_query)
