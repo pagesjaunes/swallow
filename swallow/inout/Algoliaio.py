@@ -152,7 +152,7 @@ class Algoliaio:
             sys.exit(EXIT_IO_ERROR)
 
         try:
-            documents = res = index.browse_all(p_query)
+            documents = index.browse_all(p_query)
             
             for doc in documents:
                 p_queue.put(doc)
