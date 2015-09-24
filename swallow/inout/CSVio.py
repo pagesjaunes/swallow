@@ -1,6 +1,7 @@
 from swallow.settings import logger, EXIT_USER_INTERRUPT
 import sys
 import csv
+import os
 
 class CSVio: 
     """Reads and Writes documents from/to csv file"""
@@ -21,7 +22,7 @@ class CSVio:
         # If not exists, creates the cursor
         if p_file not in self.csvfilecursor:
             self.csvfilecursor[p_file] = open(p_file, "w")
-            self.out_csvfile[p_file] = csv.writer(self.csvfilecursor[p_file],delimiter=p_delimiter,quotechar=p_quotechar,quoting=p_quoting)
+            self.out_csvfile[p_file] = csv.writer(self.csvfilecursor[p_file],delimiter=p_delimiter,quotechar=p_quotechar,quoting=p_quoting,lineterminator=os.linesep)
 
         # Loop untill receiving the "poison pill" item (meaning : no more element to read)
         poison_pill = False
