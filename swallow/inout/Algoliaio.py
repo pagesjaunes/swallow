@@ -137,7 +137,7 @@ class Algoliaio:
                 logger.info("ESio.dequeue_and_store : User interruption of the process")
                 sys.exit(1)
 
-    def scan_and_queue(self,p_queue,p_index,p_query={}):
+    def scan_and_queue(self, p_queue, p_index, p_query={}, p_connect_timeout=1, p_read_timeout=30):
         """Reads docs from an Algolia index according to a query and pushes them to the queue
 
             p_queue:        Queue where items are pushed to
@@ -146,6 +146,7 @@ class Algoliaio:
         """
         try:
             client = algoliasearch.Client(self.app_id,self.api_key)
+            client.timeout = (p_connect_timeout, p_read_timeout)
             index = client.init_index(p_index)
         except Exception as e:
             logger.error(e)
