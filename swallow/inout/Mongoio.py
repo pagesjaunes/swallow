@@ -189,7 +189,7 @@ class Mongoio:
             
                 #insert into collection
                 try:                                                                        
-                    mongo_connect[p_collection].update(find,update,upsert=True)
+                    mongo_connect[p_collection].update(find,update,upsert=True,multi=True if '_mongo_update' in source_doc else False)
                 except Exception as e:
                     logger.error("Document not inserted in Mongo Collection %s", source_doc['_id'])
                     logger.error(e)                
