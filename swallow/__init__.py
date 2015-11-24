@@ -15,7 +15,7 @@
         the list they are consuming, they must stop to listen to it.
         The Swallow object automatically generates these "pills" as it knows when producers have finished their task.
 
-        Example : 
+        Example :
 
             from swallow import Swallow
             # Transforms a doc from the es index to a csv row
@@ -37,4 +37,4 @@
             swal.run(nb_threads)
     """
 
-__version__ = "1.4.5"
+__version__ = "1.4.6"
