@@ -4,10 +4,10 @@ import time
 import pymysql.cursors
 
 
-class Mysqlio: 
+class Mysqlio:
     """Reads documents from a Mysql DB"""
 
-    def __init__(self,p_host,p_port,p_base,p_user,p_password):
+    def __init__(self, p_host, p_port, p_base, p_user, p_password):
         """Class creation
 
             p_host:        Mysql Server address
@@ -22,7 +22,7 @@ class Mysqlio:
         self.user = p_user
         self.password = p_password
 
-    def scan_and_queue(self,p_queue,p_query):
+    def scan_and_queue(self, p_queue, p_query, p_bulksize=1000):
         """Reads docs according to a query and pushes them to the queue
 
             p_queue:         Queue where items are pushed to
@@ -30,16 +30,24 @@ class Mysqlio:
         """
 
         connection = pymysql.connect(host=self.host,
-                             user=self.user,
-                             password=self.password,
-                             db=self.base,
-                             charset='utf8',
-                             cursorclass=pymysql.cursors.DictCursor)
+                            user=self.user,
+                            password=self.password,
+                            db=self.base,
+                            charset='utf8',
+                            cursorclass=pymysql.cursors.DictCursor)
         try:
+            offset = 0
+            stop = False
             with connection.cursor() as cursor:
-                cursor.execute(p_query)
-                for row in cursor:
-                    p_queue.put(row)
+                while not stop:
+                    paginated_query = "{0} limit {1},{2}".format(p_query, offset, p_bulksize)
+                    cursor.execute(paginated_query)
+                    if cursor:
+                        for row in cursor:
+                            p_queue.put(row)
+                        offset += p_bulksize
+                    else:
+                        stop = True
                 cursor.close()
         finally:
             connection.close()
