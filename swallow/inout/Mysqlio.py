@@ -42,7 +42,7 @@ class Mysqlio:
                 while not stop:
                     paginated_query = "{0} limit {1},{2}".format(p_query, offset, p_bulksize)
                     cursor.execute(paginated_query)
-                    if cursor:
+                    if cursor.rowcount:
                         for row in cursor:
                             p_queue.put(row)
                         offset += p_bulksize
