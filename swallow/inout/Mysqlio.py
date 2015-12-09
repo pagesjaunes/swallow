@@ -38,6 +38,10 @@ class Mysqlio:
         try:
             offset = 0
             stop = False
+            # delete ";" if set at the end of the query
+            query = p_query
+            if query.endswith(';'):
+                query = query[:-1]
             with connection.cursor() as cursor:
                 while not stop:
                     paginated_query = "{0} limit {1},{2}".format(p_query, offset, p_bulksize)
