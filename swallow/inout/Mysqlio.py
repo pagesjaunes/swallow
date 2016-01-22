@@ -2,6 +2,7 @@ from swallow.settings import logger, EXIT_IO_ERROR
 import sys
 import time
 import pymysql.cursors
+from pymysql import OperationalError
 
 
 class Mysqlio:
@@ -22,7 +23,7 @@ class Mysqlio:
         self.user = p_user
         self.password = p_password
 
-    def scan_and_queue(self, p_queue, p_query, p_bulksize=1000):
+    def scan_and_queue(self, p_queue, p_query, p_bulksize=1000, p_start=0):
         """Reads docs according to a query and pushes them to the queue
 
             p_queue:         Queue where items are pushed to
@@ -35,8 +36,9 @@ class Mysqlio:
                             db=self.base,
                             charset='utf8',
                             cursorclass=pymysql.cursors.DictCursor)
+
         try:
-            offset = 0
+            offset = p_start
             stop = False
             # delete ";" if set at the end of the query
             query = p_query
@@ -45,13 +47,20 @@ class Mysqlio:
             with connection.cursor() as cursor:
                 while not stop:
                     paginated_query = "{0} limit {1},{2}".format(p_query, offset, p_bulksize)
-                    cursor.execute(paginated_query)
+                    logger.debug("MySqlIo : Start dealing with records from {0} to {1}".format(offset, p_bulksize + offset))
+                    try:
+                        cursor.execute(paginated_query)
+                    except pymysql.OperationalError as e:
+                        logger.error("MySqlIo : Error while dealing with records from {0} to {1}".format(offset, p_bulksize + offset))
+                        logger.error(e)
+                        raise e
                     if cursor.rowcount:
                         for row in cursor:
                             p_queue.put(row)
                         offset += p_bulksize
                     else:
                         stop = True
+                    logger.debug("MySqlIo : All records from {0} to {1} has been put in the queue".format(offset, p_bulksize + offset))
                 cursor.close()
         finally:
             connection.close()
