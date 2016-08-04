@@ -1,11 +1,12 @@
-from swallow.settings import logger
 from algoliasearch import algoliasearch
 import sys
+from swallow.logger_mp import get_logger_mp
 
-class Algoliaio: 
+
+class Algoliaio:
     """Reads and Writes documents from/to algolia"""
-    
-    def __init__(self,p_app_id,p_api_key,p_bulksize):
+
+    def __init__(self, p_app_id, p_api_key, p_bulksize):
         """Class creation
 
             p_app_id:   Algolia app id
@@ -16,8 +17,7 @@ class Algoliaio:
         self.api_key = p_api_key
         self.bulk_size = p_bulksize
 
-
-    def clear_index(self,p_index):
+    def clear_index(self, p_index):
         """Deletes and index
 
             - p_index:     index to delete
@@ -26,19 +26,18 @@ class Algoliaio:
         delete_ok = True
 
         try:
-            client = algoliasearch.Client(self.app_id,self.api_key)
+            client = algoliasearch.Client(self.app_id, self.api_key)
             index = client.init_index(p_index)
             index.clear_index()
-            logger.info('Index %s deleted',p_index)
+            logger.info('Index %s deleted', p_index)
         except Exception as e:
-            logger.error('Error deleting the index %s',p_index)
+            logger.error('Error deleting the index %s', p_index)
             logger.error(e)
             delete_ok = False
 
         return delete_ok
 
-
-    def delete_document(self,p_index,p_id):
+    def delete_document(self, p_index, p_id):
         """Deletes a doc from an index
             - p_index:      index where to delete the doc
             - p_id:         id of the doc to delete
@@ -46,46 +45,43 @@ class Algoliaio:
         delete_ok = True
 
         try:
-            client = algoliasearch.Client(self.app_id,self.api_key)
+            client = algoliasearch.Client(self.app_id, self.api_key)
             index = client.init_index(p_index)
             index.delete_object(p_id)
-            logger.info('%s deleted from %s',p_id, p_index)
+            logger.info('%s deleted from %s', p_id, p_index)
         except Exception as e:
-            logger.error('Error deleting the %s from index %s',p_id, p_index)
+            logger.error('Error deleting the %s from index %s', p_id, p_index)
             logger.error(e)
             delete_ok = False
 
         return delete_ok
 
-
-    def set_settings(self,p_index,p_conf):
+    def set_settings(self, p_index, p_conf):
         """Sets the index settings
         """
         try:
-            client = algoliasearch.Client(self.app_id,self.api_key)
+            client = algoliasearch.Client(self.app_id, self.api_key)
             index = client.init_index(p_index)
             index.set_settings(p_conf)
-            logger.info('Index %s set',p_index)
+            logger.info('Index %s set', p_index)
         except Exception as e:
-            logger.error('Error setting the index %s',p_index)
+            logger.error('Error setting the index %s', p_index)
             logger.error(e)
 
-
-    def get_settings(self,p_index):
+    def get_settings(self, p_index):
         """Gets the index settings
         """
         try:
-            client = algoliasearch.Client(self.app_id,self.api_key)
+            client = algoliasearch.Client(self.app_id, self.api_key)
             index = client.init_index(p_index)
             result = index.get_settings()
-            logger.info('Index %s get',p_index)
+            logger.info('Index %s get', p_index)
             return result
         except Exception as e:
-            logger.error('Error getting settings of %s',p_index)
+            logger.error('Error getting settings of %s', p_index)
             logger.error(e)
 
-
-    def dequeue_and_store(self,p_queue,p_index,p_nbmax_retry=3):
+    def dequeue_and_store(self, p_queue, p_index, p_nbmax_retry=3):
         """Gets docs from p_queue and stores them in the algolia
              Stops dealing with the queue when receiving a "None" item
 
@@ -93,8 +89,9 @@ class Algoliaio:
             p_index:            algolia index where to store the docs
             p_nbmax_retry:      number of tries when failing on a request (default is 3)
         """
+        logger = get_logger_mp(__name__, self.log_queue, self.log_level, self.formatter)
 
-        client = algoliasearch.Client(self.app_id,self.api_key)
+        client = algoliasearch.Client(self.app_id, self.api_key)
         index = client.init_index(p_index)
 
         # Loop untill receiving the "poison pill" item (meaning : no more element to read)
@@ -104,7 +101,7 @@ class Algoliaio:
                 bulk = []
                 while (len(bulk) < self.bulk_size):
                     source_doc = p_queue.get()
-                    
+
                     # Manage poison pill
                     if source_doc is None:
                         logger.debug("ESio has received 'poison pill' and is now ending ...")
@@ -121,17 +118,23 @@ class Algoliaio:
                     try:
                         # Bulk indexation
                         if len(bulk) > 0:
-                            logger.debug("Indexing %i documents",len(bulk))
+                            logger.debug("Indexing %i documents", len(bulk))
                             index.add_objects(bulk)
                     except Exception as e:
-                        logger.error("Bulk not indexed in algolia - Retry number %i",try_counter)
+                        logger.error("Bulk not indexed in algolia - Retry number %i", try_counter)
                         logger.error(e)
                         try_counter += 1
                     else:
                         is_indexed = True
+                        with self.counters['nb_items_stored'].get_lock():
+                            self.counters['nb_items_stored'].value += len(bulk)
+                            if self.counters['nb_items_stored'].value % 10000 == 0:
+                                logger.info("Storage in progress : {0} items written to target".format(self.counters['nb_items_stored'].value))
 
                 if not is_indexed:
-                    logger.error("Bulk not indexed in algolia : operation aborted after %i retries",try_counter-1)
+                    logger.error("Bulk not indexed in algolia : operation aborted after %i retries", try_counter-1)
+                    with self.counters['nb_items_error'].get_lock():
+                        self.counters['nb_items_error'].value += len(bulk)
 
             except KeyboardInterrupt:
                 logger.info("ESio.dequeue_and_store : User interruption of the process")
@@ -144,8 +147,9 @@ class Algoliaio:
             p_index:        Index where items are picked from
             p_query:        query for scanning the index
         """
+        logger = get_logger_mp(__name__, self.log_queue, self.log_level, self.formatter)
         try:
-            client = algoliasearch.Client(self.app_id,self.api_key)
+            client = algoliasearch.Client(self.app_id, self.api_key)
             client.timeout = (p_connect_timeout, p_read_timeout)
             index = client.init_index(p_index)
         except Exception as e:
@@ -154,8 +158,14 @@ class Algoliaio:
 
         try:
             documents = index.browse_all(p_query)
-            
+
             for doc in documents:
                 p_queue.put(doc)
+                with self.counters['nb_items_scanned'].get_lock():
+                    self.counters['nb_items_scanned'].value += 1
+                    if self.counters['nb_items_scanned'].value % 10000 == 0:
+                        logger.info("Scan in progress : {0} items read from source".format(self.counters['nb_items_scanned'].value))
         except Exception as e:
-            logger.info("Error while scanning Algolia index %s with query %s",p_index,p_query)
+            logger.info("Error while scanning Algolia index %s with query %s", p_index, p_query)
+            with self.counters['nb_items_error'].get_lock():
+                self.counters['nb_items_error'].value += 1

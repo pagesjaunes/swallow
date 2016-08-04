@@ -1,8 +1,9 @@
-from swallow.settings import logger, EXIT_IO_ERROR
+from swallow.settings import EXIT_IO_ERROR
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError
 import sys
 import time
+from swallow.logger_mp import get_logger_mp
 
 
 class Mongoio:
@@ -52,6 +53,7 @@ class Mongoio:
             p_query:        MongoDB query for scanning the collection
             p_batch_size:   Number of read docs by iteration
         """
+        logger = get_logger_mp(__name__, self.log_queue, self.log_level, self.formatter)
         # uri for mongo connection
         uri = self._get_mongo_uri()
 
@@ -76,6 +78,11 @@ class Mongoio:
         start_time = time.time()
         for doc in documents:
             p_queue.put(doc)
+            with self.counters['nb_items_scanned'].get_lock():
+                self.counters['nb_items_scanned'].value += 1
+                if self.counters['nb_items_scanned'].value % 10000 == 0:
+                    logger.info("Scan in progress : {0} items read from source".format(self.counters['nb_items_scanned'].value))
+
             # logger.warn('In Queue size : %i',p_queue.qsize())
         time_for_x_items = time.time()
 
@@ -148,6 +155,7 @@ class Mongoio:
             p_collection:        mongo collection where to store the docs;
             p_upsert:            if true, new documents are created, if false they are ignored
         """
+        logger = get_logger_mp(__name__, self.log_queue, self.log_level, self.formatter)
 
         # uri for mongo connection
         uri = self._get_mongo_uri()
@@ -192,8 +200,15 @@ class Mongoio:
                 try:
                     mongo_connect[p_collection].update(find, update, upsert=p_upsert, multi=True if '_mongo_update' in source_doc else False)
                 except Exception as e:
+                    with self.counters['nb_items_error'].get_lock():
+                        self.counters['nb_items_error'].value += 1
                     logger.error("Document not inserted in Mongo Collection %s", source_doc['_id'])
                     logger.error(e)
+                else:
+                    with self.counters['nb_items_stored'].get_lock():
+                        self.counters['nb_items_stored'].value += 1
+                        if self.counters['nb_items_stored'].value % 10000 == 0:
+                            logger.info("Storage in progress : {0} items written to target".format(self.counters['nb_items_stored'].value))
 
                 p_queue.task_done()
 

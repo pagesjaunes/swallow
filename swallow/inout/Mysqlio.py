@@ -1,8 +1,9 @@
-from swallow.settings import logger, EXIT_IO_ERROR
+from swallow.settings import EXIT_IO_ERROR
 import sys
 import time
 import pymysql.cursors
 from pymysql import OperationalError
+from swallow.logger_mp import get_logger_mp
 
 
 class Mysqlio:
@@ -29,13 +30,14 @@ class Mysqlio:
             p_queue:         Queue where items are pushed to
             p_query:        MongoDB query for scanning the collection
         """
+        logger = get_logger_mp(__name__, self.log_queue, self.log_level, self.formatter)
 
         connection = pymysql.connect(host=self.host,
-                            user=self.user,
-                            password=self.password,
-                            db=self.base,
-                            charset='utf8',
-                            cursorclass=pymysql.cursors.DictCursor)
+                                     user=self.user,
+                                     password=self.password,
+                                     db=self.base,
+                                     charset='utf8',
+                                     cursorclass=pymysql.cursors.DictCursor)
 
         try:
             offset = p_start
@@ -62,5 +64,8 @@ class Mysqlio:
                         stop = True
                     logger.debug("MySqlIo : All records from {0} to {1} has been put in the queue".format(offset, p_bulksize + offset))
                 cursor.close()
+        except Exception as e:
+            logger.error("MySqlIo : Stop reading !")
+            logger.error(e)
         finally:
             connection.close()
