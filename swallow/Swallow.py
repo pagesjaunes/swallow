@@ -1,7 +1,10 @@
 import datetime
+import multiprocessing as mp
 from swallow.parser.parser import get_and_parse
-from multiprocessing import Process, JoinableQueue
-from swallow.settings import logger
+from multiprocessing import Process, JoinableQueue, Value, Queue
+import logging
+from logging.handlers import QueueListener
+
 
 class Swallow:
     """ This Class allows data multiprocessing
@@ -21,7 +24,7 @@ class Swallow:
         the list they are consuming, they must stop to listen to it.
         The Swallow object automatically generates these "pills" as it knows when producers have finished their task.
 
-        Example : 
+        Example :
 
             # Transforms a doc from the es index to a csv row
             def create_csv_row(p_srcdoc,*args):
@@ -44,6 +47,7 @@ class Swallow:
 
     def __init__(self, p_max_items_by_queue=50000):
         """Class creation"""
+        mp.set_start_method('forkserver')
 
         self.readers = None
         self.writer = None
@@ -57,20 +61,59 @@ class Swallow:
             self.in_queue = JoinableQueue(p_max_items_by_queue)
             self.out_queue = JoinableQueue(p_max_items_by_queue)
 
-    def run(self,p_processors_nb_threads,p_writer_nb_threads=None):
+        self.counters = {
+            'nb_items_processed': Value('i', 0),
+            'nb_items_error': Value('i', 0),
+            'nb_items_scanned': Value('i', 0),
+            'nb_items_stored': Value('i', 0)
+        }
+
+    def run(self, p_processors_nb_threads, p_writer_nb_threads=None):
+        # All log messages come and go by this queue
+        log_queue = Queue()
+        logger = logging.getLogger('swallow')
+
+        if len(logger.handlers) > 1:
+            logger.warn("Several handlers detected on swallow logger but can't log to more than a single handler in multiprocessing mode. Only the first one will be used.")
+        elif len(logger.handlers) == 0:
+            logger.warn("No handler defined for swallow logger. Log to console with info level.")
+            # Handler console
+            stream_handler = logging.StreamHandler()
+            stream_handler.setLevel(logging.INFO)
+            logger.addHandler(stream_handler)
+
+        # each log_listener gets records from the queue and sends them to a specific handler
+        handler = logger.handlers[0]
+        formatter = handler.formatter
+        listener = QueueListener(log_queue, handler)
+        listener.start()
+
         if p_writer_nb_threads is None:
             p_writer_nb_threads = p_processors_nb_threads
 
-        logger.info('Running swallow process. Processor on %i threads / Writers on %i threads',p_processors_nb_threads,p_writer_nb_threads)
+        logger.info('Running swallow process. Processor on %i threads / Writers on %i threads', p_processors_nb_threads, p_writer_nb_threads)
 
         start_time = datetime.datetime.now()
 
-        read_worker = [Process(target=reader['reader'].scan_and_queue, args=(self.in_queue,),kwargs=(reader['args'])) for reader in self.readers]
-        process_worker = [Process(target=get_and_parse, args=(self.in_queue,self.out_queue,self.process),kwargs=(self.process_args)) for i in range(p_processors_nb_threads)]
+        # Set extra properties to readers
+        for reader in self.readers:
+            reader['reader'].counters = self.counters
+            reader['reader'].log_queue = log_queue
+            reader['reader'].log_level = logger.level
+            reader['reader'].formatter = formatter
+
+        # Set extra properties to writer
+        self.writer.counters = self.counters
+        self.writer.log_queue = log_queue
+        self.writer.log_level = logger.level
+        self.writer.formatter = formatter
+
+        read_worker = [Process(target=reader['reader'].scan_and_queue, args=(self.in_queue,), kwargs=(reader['args'])) for reader in self.readers]
+        process_worker = [Process(target=get_and_parse, args=(self.in_queue, self.out_queue, self.process, self.counters, log_queue, logger.level, formatter), kwargs=(self.process_args)) for i in range(p_processors_nb_threads)]
 
         # writers are optionnal
         if self.writer is not None:
-            write_worker = [Process(target=self.writer.dequeue_and_store, args=(self.out_queue,),kwargs=(self.writer_store_args)) for i in range(p_writer_nb_threads)]
+            write_worker = [Process(target=self.writer.dequeue_and_store, args=(self.out_queue,), kwargs=(self.writer_store_args)) for i in range(p_writer_nb_threads)]
         else:
             write_worker = []
 
@@ -81,58 +124,65 @@ class Swallow:
             work.start()
         for work in write_worker:
             work.start()
-        
+
         # Waiting for workers to end :
         # worker.join() blocks the programm till the worker ends
+        logger.info('Waiting for reader to finish')
         for work in read_worker:
             # Waiting for all reader to finish their jobs
-            logger.info('Waiting for reader to finish')
             work.join()
 
         # At this point, reading is finished. We had a poison pill for each consumer of read queue :
         for i in range(len(process_worker)):
             self.in_queue.put(None)
 
+        logger.info('Waiting for processors to finish')
         for work in process_worker:
             # Waiting for all processors to finish their jobs
-            logger.info('Waiting for processors to finish')
             work.join()
 
         # At this point, processing is finished. We had a poison pill for each consumer of write queue :
         for i in range(len(write_worker)):
             self.out_queue.put(None)
 
+        logger.info('Waiting for writers to finish')
         for work in write_worker:
             # Waiting for all writers to finish their jobs
-            logger.info('Waiting for writers to finish')
             work.join()
 
         elsapsed_time = datetime.datetime.now() - start_time
         logger.info('Elapsed time : %ss' % elsapsed_time.total_seconds())
+        logger.info('Nb items scanned : {0}'.format(self.counters['nb_items_scanned'].value))
+        logger.info('Nb items processed : {0}'.format(self.counters['nb_items_processed'].value))
+        logger.info('Nb items stored : {0}'.format(self.counters['nb_items_stored'].value))
+        logger.info('Nb items error : {0}'.format(self.counters['nb_items_error'].value))
 
-    def set_reader(self,p_reader,**kwargs):
+        # Stop listening for log messages
+        listener.stop()
+
+    def set_reader(self, p_reader, **kwargs):
         """ Set the reader and its "scan_and_queue" method extra param"""
-        self.readers = [{'reader':p_reader,'args':kwargs}]
+        self.readers = [{'reader': p_reader, 'args': kwargs}]
 
-    def add_reader(self,p_reader,**kwargs):
+    def add_reader(self, p_reader, **kwargs):
         """ Add a reader and its "scan_and_queue" method extra param to the reader list
             May be used when scaning multi data source
         """
         if not self.readers:
-            self.set_reader(p_reader,**kwargs)
+            self.set_reader(p_reader, **kwargs)
         else:
-            self.readers.append({'reader':p_reader,'args':kwargs})
+            self.readers.append({'reader': p_reader, 'args': kwargs})
 
     def flush_readers(self):
         """ Removes all the readers """
         del self.readers[:]
 
-    def set_writer(self,p_writer,**kwargs):
+    def set_writer(self, p_writer, **kwargs):
         """ Set the writer and its "dequeue_and_store" method extra param"""
         self.writer = p_writer
         self.writer_store_args = kwargs
 
-    def set_process(self,p_process,**kwargs):
+    def set_process(self, p_process, **kwargs):
         """ Set the processor function and its extra param"""
         self.process = p_process
         self.process_args = kwargs

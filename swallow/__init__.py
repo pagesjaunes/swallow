@@ -37,4 +37,4 @@
             swal.run(nb_threads)
     """
 
-__version__ = "1.4.11"
+__version__ = "1.5.0"
