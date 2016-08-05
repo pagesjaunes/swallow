@@ -1,3 +1,4 @@
+from swallow.settings import logger
 from algoliasearch import algoliasearch
 import sys
 from swallow.logger_mp import get_logger_mp

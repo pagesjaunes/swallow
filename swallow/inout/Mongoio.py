@@ -1,4 +1,4 @@
-from swallow.settings import EXIT_IO_ERROR
+from swallow.settings import logger, EXIT_IO_ERROR
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError
 import sys
