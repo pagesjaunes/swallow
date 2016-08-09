@@ -107,7 +107,7 @@ class ESio:
 
         try:
             param = [{'host': self.host, 'port': self.port, 'timeout': p_timeout, 'max_retries': p_nbmax_retry, 'retry_on_timeout': True}]
-            es = Elasticsearch(param)
+            es = Elasticsearch(param, sniff_on_start=True, sniff_on_connection_fail=True, sniffer_timeout=60)
             logger.info('Connected to ES Server: %s', json.dumps(param))
         except Exception as e:
             logger.error('Connection failed to ES Server : %s', json.dumps(param))
@@ -154,7 +154,7 @@ class ESio:
                         is_indexed = True
                         with self.counters['nb_items_stored'].get_lock():
                             self.counters['nb_items_stored'].value += len(bulk)
-                            if self.counters['nb_items_stored'].value % 10000 == 0:
+                            if self.counters['nb_items_stored'].value % self.counters['log_every'] == 0:
                                 logger.info("Storage in progress : {0} items written to target".format(self.counters['nb_items_stored'].value))
 
                 if not is_indexed:
@@ -174,7 +174,7 @@ class ESio:
         if p_disable_indexing:
             self._set_indexing_refresh(logger, es, p_index, "1s")
 
-    def scan_and_queue(self, p_queue, p_index, p_query={}, p_doctype=None, p_scroll_time='5m', p_timeout='1m'):
+    def scan_and_queue(self, p_queue, p_index, p_query={}, p_doctype=None, p_scroll_time='5m', p_timeout='1m', p_size=100):
         """Reads docs from an es index according to a query and pushes them to the queue
 
             p_queue:         Queue where items are pushed to
@@ -188,7 +188,7 @@ class ESio:
 
         try:
             param = [{'host': self.host, 'port': self.port}]
-            es = Elasticsearch(param)
+            es = Elasticsearch(param, sniff_on_start=True, sniff_on_connection_fail=True, sniffer_timeout=60)
             logger.info('Connected to ES Server for reading: %s', json.dumps(param))
         except Exception as e:
             logger.error('Connection failed to ES Server for reading: %s', json.dumps(param))
@@ -197,14 +197,14 @@ class ESio:
 
         try:
             if 'p_doctype' is not None:
-                documents = helpers.scan(client=es, query=p_query, size=1000, scroll=p_scroll_time, index=p_index, doc_type=p_doctype, timeout=p_timeout)
+                documents = helpers.scan(client=es, query=p_query, size=p_size, scroll=p_scroll_time, index=p_index, doc_type=p_doctype, timeout=p_timeout)
             else:
-                documents = helpers.scan(client=es, query=p_query, size=1000, scroll=p_scroll_time, index=p_index, timeout=p_timeout)
+                documents = helpers.scan(client=es, query=p_query, size=p_size, scroll=p_scroll_time, index=p_index, timeout=p_timeout)
             for doc in documents:
                 p_queue.put(doc)
                 with self.counters['nb_items_scanned'].get_lock():
                     self.counters['nb_items_scanned'].value += 1
-                    if self.counters['nb_items_scanned'].value % 10000 == 0:
+                    if self.counters['nb_items_scanned'].value % self.counters['log_every'] == 0:
                         logger.info("Scan in progress : {0} items read from source".format(self.counters['nb_items_scanned'].value))
         except Exception as e:
             logger.info("Error while scanning ES index %s with query %s", p_index, p_query)
