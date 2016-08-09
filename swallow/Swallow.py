@@ -45,9 +45,10 @@ class Swallow:
             swal.run(nb_threads)
     """
 
-    def __init__(self, p_max_items_by_queue=50000):
+    def __init__(self, p_max_items_by_queue=50000, p_forkserver=False):
         """Class creation"""
-        mp.set_start_method('forkserver')
+        if p_forkserver:
+            mp.set_start_method('forkserver')
 
         self.readers = None
         self.writer = None
