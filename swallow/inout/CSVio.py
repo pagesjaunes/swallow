@@ -44,7 +44,7 @@ class CSVio:
                 self.out_csvfile[p_file].writerow(source_doc)
                 with self.counters['nb_items_stored'].get_lock():
                     self.counters['nb_items_stored'].value += 1
-                    if self.counters['nb_items_stored'].value % 10000 == 0:
+                    if self.counters['nb_items_stored'].value % self.counters['log_every'] == 0:
                         logger.info("Storage in progress : {0} items written to target".format(self.counters['nb_items_stored'].value))
 
                 p_queue.task_done()
@@ -73,7 +73,7 @@ class CSVio:
                 p_queue.put(row)
                 with self.counters['nb_items_scanned'].get_lock():
                     self.counters['nb_items_scanned'].value += 1
-                    if self.counters['nb_items_scanned'].value % 10000 == 0:
+                    if self.counters['nb_items_scanned'].value % self.counters['log_every'] == 0:
                         logger.info("Scan in progress : {0} items read from source".format(self.counters['nb_items_scanned'].value))
             else:
                 skipline = False

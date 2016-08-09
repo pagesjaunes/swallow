@@ -45,7 +45,7 @@ def get_and_parse(p_inqueue, p_outqueue, p_process, p_counters, p_log_queue, p_l
 
                 with p_counters['nb_items_processed'].get_lock():
                     p_counters['nb_items_processed'].value += 1
-                    if p_counters['nb_items_processed'].value % 10000 == 0:
+                    if p_counters['nb_items_processed'].value % p_counters['log_every'] == 0:
                         logger.info("Process in progress : {0} items processed".format(p_counters['nb_items_processed'].value))
 
         except TimeoutError:

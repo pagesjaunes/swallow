@@ -129,7 +129,7 @@ class Algoliaio:
                         is_indexed = True
                         with self.counters['nb_items_stored'].get_lock():
                             self.counters['nb_items_stored'].value += len(bulk)
-                            if self.counters['nb_items_stored'].value % 10000 == 0:
+                            if self.counters['nb_items_stored'].value % self.counters['log_every'] == 0:
                                 logger.info("Storage in progress : {0} items written to target".format(self.counters['nb_items_stored'].value))
 
                 if not is_indexed:
@@ -164,7 +164,7 @@ class Algoliaio:
                 p_queue.put(doc)
                 with self.counters['nb_items_scanned'].get_lock():
                     self.counters['nb_items_scanned'].value += 1
-                    if self.counters['nb_items_scanned'].value % 10000 == 0:
+                    if self.counters['nb_items_scanned'].value % self.counters['log_every'] == 0:
                         logger.info("Scan in progress : {0} items read from source".format(self.counters['nb_items_scanned'].value))
         except Exception as e:
             logger.info("Error while scanning Algolia index %s with query %s", p_index, p_query)

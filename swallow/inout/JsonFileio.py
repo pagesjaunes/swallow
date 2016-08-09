@@ -28,7 +28,7 @@ class JsonFileio:
                 p_queue.put(doc)
                 with self.counters['nb_items_scanned'].get_lock():
                     self.counters['nb_items_scanned'].value += 1
-                    if self.counters['nb_items_scanned'].value % 10000 == 0:
+                    if self.counters['nb_items_scanned'].value % self.counters['log_every'] == 0:
                         logger.info("Scan in progress : {0} items read from source".format(self.counters['nb_items_scanned'].value))
         else:
             p_queue.put(documents)
