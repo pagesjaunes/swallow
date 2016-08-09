@@ -103,19 +103,19 @@ class ESio:
             p_timeout:          timeout for bulk (default is 10s)
             p_nbmax_retry:      number of tries when failing on a request (default is 3)
         """
-        logger = get_logger_mp(__name__, self.log_queue, self.log_level, self.formatter)
+        logger_mp = get_logger_mp(__name__, self.log_queue, self.log_level, self.formatter)
 
         try:
             param = [{'host': self.host, 'port': self.port, 'timeout': p_timeout, 'max_retries': p_nbmax_retry, 'retry_on_timeout': True}]
             es = Elasticsearch(param, sniff_on_start=True, sniff_on_connection_fail=True, sniffer_timeout=60)
-            logger.info('Connected to ES Server: %s', json.dumps(param))
+            logger_mp.info('Connected to ES Server: %s', json.dumps(param))
         except Exception as e:
-            logger.error('Connection failed to ES Server : %s', json.dumps(param))
-            logger.error(e)
+            logger_mp.error('Connection failed to ES Server : %s', json.dumps(param))
+            logger_mp.error(e)
             sys.exit(EXIT_IO_ERROR)
 
         if p_disable_indexing:
-            self._set_indexing_refresh(logger, es, p_index, "-1")
+            self._set_indexing_refresh(logger_mp, es, p_index, "-1")
 
         # Loop untill receiving the "poison pill" item (meaning : no more element to read)
         poison_pill = False
@@ -127,7 +127,7 @@ class ESio:
 
                     # Manage poison pill
                     if source_doc is None:
-                        logger.debug("ESio has received 'poison pill' and is now ending ...")
+                        logger_mp.debug("ESio has received 'poison pill' and is now ending ...")
                         poison_pill = True
                         p_queue.task_done()
                         break
@@ -144,35 +144,35 @@ class ESio:
                     try:
                         # Bulk indexation
                         if len(bulk) > 0:
-                            logger.debug("Indexing %i documents", len(bulk))
+                            logger_mp.debug("Indexing %i documents", len(bulk))
                             helpers.bulk(es, bulk, raise_on_error=True)
                     except Exception as e:
-                        logger.error("Bulk not indexed in ES - Retry n°%i", try_counter)
-                        logger.error(e)
+                        logger_mp.error("Bulk not indexed in ES - Retry n°%i", try_counter)
+                        logger_mp.error(e)
                         try_counter += 1
                     else:
                         is_indexed = True
                         with self.counters['nb_items_stored'].get_lock():
                             self.counters['nb_items_stored'].value += len(bulk)
                             if self.counters['nb_items_stored'].value % self.counters['log_every'] == 0:
-                                logger.info("Storage in progress : {0} items written to target".format(self.counters['nb_items_stored'].value))
+                                logger_mp.info("Storage in progress : {0} items written to target".format(self.counters['nb_items_stored'].value))
 
                 if not is_indexed:
-                    logger.error("Bulk not indexed in elasticsearch : operation aborted after %i retries", try_counter-1)
+                    logger_mp.error("Bulk not indexed in elasticsearch : operation aborted after %i retries", try_counter-1)
                     with self.counters['nb_items_error'].get_lock():
                         self.counters['nb_items_error'].value += len(bulk)
 
             except KeyboardInterrupt:
-                logger.info("ESio.dequeue_and_store : User interruption of the process")
+                logger_mp.info("ESio.dequeue_and_store : User interruption of the process")
                 # If indexing has been disabled, enable it again
                 if p_disable_indexing:
-                    self._set_indexing_refresh(logger, es, p_index, "1s")
+                    self._set_indexing_refresh(logger_mp, es, p_index, "1s")
 
                 sys.exit(EXIT_USER_INTERRUPT)
 
         # If indexing has been disabled, enable it again
         if p_disable_indexing:
-            self._set_indexing_refresh(logger, es, p_index, "1s")
+            self._set_indexing_refresh(logger_mp, es, p_index, "1s")
 
     def scan_and_queue(self, p_queue, p_index, p_query={}, p_doctype=None, p_scroll_time='5m', p_timeout='1m', p_size=100):
         """Reads docs from an es index according to a query and pushes them to the queue
@@ -184,15 +184,15 @@ class ESio:
             p_doctype:        DocType of the items
             p_query:        ElasticSearch query for scanning the index
         """
-        logger = get_logger_mp(__name__, self.log_queue, self.log_level, self.formatter)
+        logger_mp = get_logger_mp(__name__, self.log_queue, self.log_level, self.formatter)
 
         try:
             param = [{'host': self.host, 'port': self.port}]
             es = Elasticsearch(param, sniff_on_start=True, sniff_on_connection_fail=True, sniffer_timeout=60)
-            logger.info('Connected to ES Server for reading: %s', json.dumps(param))
+            logger_mp.info('Connected to ES Server for reading: %s', json.dumps(param))
         except Exception as e:
-            logger.error('Connection failed to ES Server for reading: %s', json.dumps(param))
-            logger.error(e)
+            logger_mp.error('Connection failed to ES Server for reading: %s', json.dumps(param))
+            logger_mp.error(e)
             sys.exit(EXIT_IO_ERROR)
 
         try:
@@ -205,9 +205,9 @@ class ESio:
                 with self.counters['nb_items_scanned'].get_lock():
                     self.counters['nb_items_scanned'].value += 1
                     if self.counters['nb_items_scanned'].value % self.counters['log_every'] == 0:
-                        logger.info("Scan in progress : {0} items read from source".format(self.counters['nb_items_scanned'].value))
+                        logger_mp.info("Scan in progress : {0} items read from source".format(self.counters['nb_items_scanned'].value))
         except Exception as e:
-            logger.info("Error while scanning ES index %s with query %s", p_index, p_query)
+            logger_mp.info("Error while scanning ES index %s with query %s", p_index, p_query)
             with self.counters['nb_items_error'].get_lock():
                 self.counters['nb_items_error'].value += 1
 
@@ -232,5 +232,6 @@ class ESio:
                 p_es_client.indices.create(index=p_index, body={'settings': settings})
             except Exception as e:
                 p_logger.info("Can't create index {0}, already exists ?".format(p_index))
+                p_logger.info(e)
         else:
             p_es_client.indices.put_settings(body=settings, index=p_index)
