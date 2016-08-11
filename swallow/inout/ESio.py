@@ -107,7 +107,7 @@ class ESio:
 
         try:
             param = [{'host': self.host, 'port': self.port, 'timeout': p_timeout, 'max_retries': p_nbmax_retry, 'retry_on_timeout': True}]
-            es = Elasticsearch(param, sniff_on_start=True, sniff_on_connection_fail=True, sniffer_timeout=60)
+            es = Elasticsearch(param)
             logger_mp.info('Connected to ES Server: %s', json.dumps(param))
         except Exception as e:
             logger_mp.error('Connection failed to ES Server : %s', json.dumps(param))
@@ -174,7 +174,7 @@ class ESio:
         if p_disable_indexing:
             self._set_indexing_refresh(logger_mp, es, p_index, "1s")
 
-    def scan_and_queue(self, p_queue, p_index, p_query={}, p_doctype=None, p_scroll_time='5m', p_timeout='1m', p_size=100):
+    def scan_and_queue(self, p_queue, p_index, p_query={}, p_doctype=None, p_scroll_time='5m', p_timeout='1m', p_size=100, p_overall_timeout=30, p_nbmax_retry=3):
         """Reads docs from an es index according to a query and pushes them to the queue
 
             p_queue:         Queue where items are pushed to
@@ -187,8 +187,8 @@ class ESio:
         logger_mp = get_logger_mp(__name__, self.log_queue, self.log_level, self.formatter)
 
         try:
-            param = [{'host': self.host, 'port': self.port}]
-            es = Elasticsearch(param, sniff_on_start=True, sniff_on_connection_fail=True, sniffer_timeout=60)
+            param = [{'host': self.host, 'port': self.port, 'timeout': p_overall_timeout, 'max_retries': p_nbmax_retry, 'retry_on_timeout': True}]
+            es = Elasticsearch(param)
             logger_mp.info('Connected to ES Server for reading: %s', json.dumps(param))
         except Exception as e:
             logger_mp.error('Connection failed to ES Server for reading: %s', json.dumps(param))
