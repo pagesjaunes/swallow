@@ -180,7 +180,6 @@ class Mongoio:
 
                 # Manage poison pill
                 if source_doc is None:
-                    logger.debug("Mongoio has received 'poison pill' and is now ending ...")
                     poison_pill = True
                     p_queue.task_done()
                     break

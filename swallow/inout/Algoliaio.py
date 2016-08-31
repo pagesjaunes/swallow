@@ -2,6 +2,7 @@ from swallow.settings import logger
 from algoliasearch import algoliasearch
 import sys
 from swallow.logger_mp import get_logger_mp
+import time
 
 
 class Algoliaio:
@@ -96,6 +97,7 @@ class Algoliaio:
         index = client.init_index(p_index)
 
         # Loop untill receiving the "poison pill" item (meaning : no more element to read)
+        start = time.time()
         poison_pill = False
         while not(poison_pill):
             try:
@@ -105,7 +107,6 @@ class Algoliaio:
 
                     # Manage poison pill
                     if source_doc is None:
-                        logger.debug("ESio has received 'poison pill' and is now ending ...")
                         poison_pill = True
                         p_queue.task_done()
                         break
@@ -116,10 +117,10 @@ class Algoliaio:
                 try_counter = 1
                 is_indexed = False
                 while try_counter <= p_nbmax_retry and not is_indexed:
+                    start_bulking = time.time()
                     try:
                         # Bulk indexation
                         if len(bulk) > 0:
-                            logger.debug("Indexing %i documents", len(bulk))
                             index.add_objects(bulk)
                     except Exception as e:
                         logger.error("Bulk not indexed in algolia - Retry number %i", try_counter)
@@ -127,12 +128,23 @@ class Algoliaio:
                         try_counter += 1
                     else:
                         is_indexed = True
+                        now = time.time()
+                        elapsed_bulking = now - start_bulking
+                        elapsed = now - start
                         with self.counters['nb_items_stored'].get_lock():
                             self.counters['nb_items_stored'].value += len(bulk)
-                            if self.counters['nb_items_stored'].value % self.counters['log_every'] == 0:
-                                logger.info("Storage in progress : {0} items written to target".format(self.counters['nb_items_stored'].value))
+                            self.counters['whole_storage_time'].value += elapsed
+                            self.counters['bulk_storage_time'].value += elapsed_bulking
+                            nb_items = self.counters['nb_items_stored'].value
+                            if nb_items % self.counters['log_every'] == 0:
+                                logger_mp.info("Store : {0} items".format(nb_items))
+                                logger_mp.debug("   -> Avg store time : {0}ms".format(1000*self.counters['whole_storage_time'].value / nb_items))
+                                logger_mp.debug("   -> Avg bulk time  : {0}ms".format(1000*self.counters['bulk_storage_time'].value / nb_items))
+
+                            start = time.time()
 
                 if not is_indexed:
+                    start = time.time()
                     logger.error("Bulk not indexed in algolia : operation aborted after %i retries", try_counter-1)
                     with self.counters['nb_items_error'].get_lock():
                         self.counters['nb_items_error'].value += len(bulk)
@@ -159,13 +171,22 @@ class Algoliaio:
 
         try:
             documents = index.browse_all(p_query)
-
+            start = time.time()
             for doc in documents:
                 p_queue.put(doc)
+                elapsed = time.time() - start
+
                 with self.counters['nb_items_scanned'].get_lock():
                     self.counters['nb_items_scanned'].value += 1
-                    if self.counters['nb_items_scanned'].value % self.counters['log_every'] == 0:
-                        logger.info("Scan in progress : {0} items read from source".format(self.counters['nb_items_scanned'].value))
+                    nb_items = self.counters['nb_items_scanned'].value
+                    self.counters['scan_time'].value += elapsed
+
+                    if nb_items % self.counters['log_every'] == 0:
+                        logger.info("Scan : {0} items".format(nb_items))
+                        logger.debug("   -> Avg scan time : {0}ms".format(1000*self.counters['scan_time'].value / nb_items))
+
+                    # Start timers reinit
+                    start = time.time()
         except Exception as e:
             logger.info("Error while scanning Algolia index %s with query %s", p_index, p_query)
             with self.counters['nb_items_error'].get_lock():

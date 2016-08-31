@@ -67,6 +67,12 @@ class Swallow:
             'nb_items_error': Value('i', 0),
             'nb_items_scanned': Value('i', 0),
             'nb_items_stored': Value('i', 0),
+            'whole_storage_time': Value('f', 0),
+            'bulk_storage_time': Value('f', 0),
+            'whole_process_time': Value('f', 0),
+            'real_process_time': Value('f', 0),
+            'idle_process_time': Value('f', 0),
+            'scan_time': Value('f', 0),
             'log_every': p_log_every
         }
 
@@ -154,10 +160,22 @@ class Swallow:
 
         elsapsed_time = datetime.datetime.now() - start_time
         logger.info('Elapsed time : %ss' % elsapsed_time.total_seconds())
-        logger.info('Nb items scanned : {0}'.format(self.counters['nb_items_scanned'].value))
-        logger.info('Nb items processed : {0}'.format(self.counters['nb_items_processed'].value))
-        logger.info('Nb items stored : {0}'.format(self.counters['nb_items_stored'].value))
-        logger.info('Nb items error : {0}'.format(self.counters['nb_items_error'].value))
+
+        nb_items = self.counters['nb_items_scanned'].value
+        avg_time = 1000*self.counters['scan_time'].value / nb_items
+        logger.info('{0} items scanned ({1}ms)'.format(nb_items, avg_time))
+
+        nb_items = self.counters['nb_items_processed'].value
+        avg_time = 1000*self.counters['real_process_time'].value / nb_items
+        avg_time_idle = 1000*self.counters['idle_process_time'].value / nb_items
+        logger.info('{0} items processed (process : {1}ms / idle : {2}ms)'.format(nb_items, avg_time, avg_time_idle))
+
+        nb_items = self.counters['nb_items_stored'].value
+        avg_time = 1000*self.counters['whole_storage_time'].value / nb_items
+        logger.info('{0} items stored ({1}ms)'.format(nb_items, avg_time))
+
+        nb_items = self.counters['nb_items_error'].value
+        logger.info('{0} items error'.format(nb_items))
 
         # Stop listening for log messages
         listener.stop()

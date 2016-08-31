@@ -94,7 +94,7 @@ class ESio:
 
         return delete_ok
 
-    def dequeue_and_store(self, p_queue, p_index, p_timeout=10, p_nbmax_retry=3, p_disable_indexing=True):
+    def dequeue_and_store(self, p_queue, p_index, p_timeout=10, p_nbmax_retry=3, p_disable_indexing=False):
         """Gets docs from p_queue and stores them in the csv file
              Stops dealing with the queue when receiving a "None" item
 
@@ -118,6 +118,7 @@ class ESio:
             self._set_indexing_refresh(logger_mp, es, p_index, "-1")
 
         # Loop untill receiving the "poison pill" item (meaning : no more element to read)
+        start = time.time()
         poison_pill = False
         while not(poison_pill):
             try:
@@ -127,7 +128,6 @@ class ESio:
 
                     # Manage poison pill
                     if source_doc is None:
-                        logger_mp.debug("ESio has received 'poison pill' and is now ending ...")
                         poison_pill = True
                         p_queue.task_done()
                         break
@@ -141,23 +141,35 @@ class ESio:
                 try_counter = 1
                 is_indexed = False
                 while try_counter <= p_nbmax_retry and not is_indexed:
+                    start_bulking = time.time()
+
                     try:
                         # Bulk indexation
                         if len(bulk) > 0:
-                            logger_mp.debug("Indexing %i documents", len(bulk))
                             helpers.bulk(es, bulk, raise_on_error=True)
                     except Exception as e:
-                        logger_mp.error("Bulk not indexed in ES - Retry n°%i", try_counter)
+                        logger_mp.error("Bulk not indexed in ES - Retry n°{0}".format(try_counter))
                         logger_mp.error(e)
                         try_counter += 1
                     else:
                         is_indexed = True
+                        now = time.time()
+                        elapsed_bulking = now - start_bulking
+                        elapsed = now - start
                         with self.counters['nb_items_stored'].get_lock():
                             self.counters['nb_items_stored'].value += len(bulk)
-                            if self.counters['nb_items_stored'].value % self.counters['log_every'] == 0:
-                                logger_mp.info("Storage in progress : {0} items written to target".format(self.counters['nb_items_stored'].value))
+                            self.counters['whole_storage_time'].value += elapsed
+                            self.counters['bulk_storage_time'].value += elapsed_bulking
+                            nb_items = self.counters['nb_items_stored'].value
+                            if nb_items % self.counters['log_every'] == 0:
+                                logger_mp.info("Store : {0} items".format(nb_items))
+                                logger_mp.debug("   -> Avg store time : {0}ms".format(1000*self.counters['whole_storage_time'].value / nb_items))
+                                logger_mp.debug("   -> Avg bulk time  : {0}ms".format(1000*self.counters['bulk_storage_time'].value / nb_items))
+
+                            start = time.time()
 
                 if not is_indexed:
+                    start = time.time()
                     logger_mp.error("Bulk not indexed in elasticsearch : operation aborted after %i retries", try_counter-1)
                     with self.counters['nb_items_error'].get_lock():
                         self.counters['nb_items_error'].value += len(bulk)
@@ -200,12 +212,25 @@ class ESio:
                 documents = helpers.scan(client=es, query=p_query, size=p_size, scroll=p_scroll_time, index=p_index, doc_type=p_doctype, timeout=p_timeout)
             else:
                 documents = helpers.scan(client=es, query=p_query, size=p_size, scroll=p_scroll_time, index=p_index, timeout=p_timeout)
+
+            start = time.time()
             for doc in documents:
                 p_queue.put(doc)
+
+                elapsed = time.time() - start
+
                 with self.counters['nb_items_scanned'].get_lock():
                     self.counters['nb_items_scanned'].value += 1
-                    if self.counters['nb_items_scanned'].value % self.counters['log_every'] == 0:
-                        logger_mp.info("Scan in progress : {0} items read from source".format(self.counters['nb_items_scanned'].value))
+                    nb_items = self.counters['nb_items_scanned'].value
+                    self.counters['scan_time'].value += elapsed
+
+                    if nb_items % self.counters['log_every'] == 0:
+                        logger_mp.info("Scan : {0} items".format(nb_items))
+                        logger_mp.debug("   -> Avg scan time : {0}ms".format(1000*self.counters['scan_time'].value / nb_items))
+
+                    # Start timers reinit
+                    start = time.time()
+
         except Exception as e:
             logger_mp.info("Error while scanning ES index %s with query %s", p_index, p_query)
             with self.counters['nb_items_error'].get_lock():
