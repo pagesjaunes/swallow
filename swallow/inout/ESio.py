@@ -4,6 +4,7 @@ import json
 import sys
 import time
 from swallow.logger_mp import get_logger_mp
+import multiprocessing
 
 
 class ESio:
@@ -19,6 +20,7 @@ class ESio:
         self.host = p_host
         self.port = p_port
         self.bulk_size = p_bulksize
+        self.scroll_docs = None
 
     def count(self, p_index, p_query={}):
         """Gets the number of docs for a query
@@ -161,7 +163,7 @@ class ESio:
                             self.counters['whole_storage_time'].value += elapsed
                             self.counters['bulk_storage_time'].value += elapsed_bulking
                             nb_items = self.counters['nb_items_stored'].value
-                            if nb_items % self.counters['log_every'] == 0:
+                            if nb_items % self.counters['log_every'] == 0 and nb_items != 0:
                                 logger_mp.info("Store : {0} items".format(nb_items))
                                 logger_mp.debug("   -> Avg store time : {0}ms".format(1000*self.counters['whole_storage_time'].value / nb_items))
                                 logger_mp.debug("   -> Avg bulk time  : {0}ms".format(1000*self.counters['bulk_storage_time'].value / nb_items))
@@ -201,20 +203,22 @@ class ESio:
         try:
             param = [{'host': self.host, 'port': self.port, 'timeout': p_overall_timeout, 'max_retries': p_nbmax_retry, 'retry_on_timeout': True}]
             es = Elasticsearch(param)
-            logger_mp.info('Connected to ES Server for reading: %s', json.dumps(param))
+            es.ping()
+            logger_mp.info('Connected to ES Server for reading: {0}'.format(json.dumps(param)))
         except Exception as e:
-            logger_mp.error('Connection failed to ES Server for reading: %s', json.dumps(param))
+            logger_mp.error('Connection failed to ES Server for reading: {0}'.format(json.dumps(param)))
             logger_mp.error(e)
             sys.exit(EXIT_IO_ERROR)
 
         try:
-            if 'p_doctype' is not None:
-                documents = helpers.scan(client=es, query=p_query, size=p_size, scroll=p_scroll_time, index=p_index, doc_type=p_doctype, timeout=p_timeout)
-            else:
-                documents = helpers.scan(client=es, query=p_query, size=p_size, scroll=p_scroll_time, index=p_index, timeout=p_timeout)
+            if not self.scroll_docs:
+                if 'p_doctype' is not None:
+                    self.scroll_docs = helpers.scan(client=es, query=p_query, size=p_size, scroll=p_scroll_time, index=p_index, doc_type=p_doctype, timeout=p_timeout)
+                else:
+                    self.scroll_docs = helpers.scan(client=es, query=p_query, size=p_size, scroll=p_scroll_time, index=p_index, timeout=p_timeout)
 
             start = time.time()
-            for doc in documents:
+            for doc in self.scroll_docs:
                 p_queue.put(doc)
 
                 elapsed = time.time() - start
@@ -226,6 +230,7 @@ class ESio:
 
                     if nb_items % self.counters['log_every'] == 0:
                         logger_mp.info("Scan : {0} items".format(nb_items))
+                        logger_mp.debug("   {0}".format(multiprocessing.current_process()))
                         logger_mp.debug("   -> Avg scan time : {0}ms".format(1000*self.counters['scan_time'].value / nb_items))
 
                     # Start timers reinit
