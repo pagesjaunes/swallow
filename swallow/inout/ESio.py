@@ -230,7 +230,6 @@ class ESio:
 
                     if nb_items % self.counters['log_every'] == 0:
                         logger_mp.info("Scan : {0} items".format(nb_items))
-                        logger_mp.debug("   {0}".format(multiprocessing.current_process()))
                         logger_mp.debug("   -> Avg scan time : {0}ms".format(1000*self.counters['scan_time'].value / nb_items))
 
                     # Start timers reinit

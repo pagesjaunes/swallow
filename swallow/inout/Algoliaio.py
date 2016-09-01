@@ -137,9 +137,9 @@ class Algoliaio:
                             self.counters['bulk_storage_time'].value += elapsed_bulking
                             nb_items = self.counters['nb_items_stored'].value
                             if nb_items % self.counters['log_every'] == 0:
-                                logger_mp.info("Store : {0} items".format(nb_items))
-                                logger_mp.debug("   -> Avg store time : {0}ms".format(1000*self.counters['whole_storage_time'].value / nb_items))
-                                logger_mp.debug("   -> Avg bulk time  : {0}ms".format(1000*self.counters['bulk_storage_time'].value / nb_items))
+                                logger.info("Store : {0} items".format(nb_items))
+                                logger.debug("   -> Avg store time : {0}ms".format(1000*self.counters['whole_storage_time'].value / nb_items))
+                                logger.debug("   -> Avg bulk time  : {0}ms".format(1000*self.counters['bulk_storage_time'].value / nb_items))
 
                             start = time.time()
 
