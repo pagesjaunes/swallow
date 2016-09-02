@@ -111,10 +111,11 @@ class Swallow:
             reader['reader'].formatter = formatter
 
         # Set extra properties to writer
-        self.writer.counters = self.counters
-        self.writer.log_queue = log_queue
-        self.writer.log_level = logger.level
-        self.writer.formatter = formatter
+        if self.writer is not None:
+            self.writer.counters = self.counters
+            self.writer.log_queue = log_queue
+            self.writer.log_level = logger.level
+            self.writer.formatter = formatter
 
         read_worker = [Process(target=reader['reader'].scan_and_queue, args=(self.in_queue,), kwargs=(reader['args'])) for reader in self.readers]
         process_worker = [Process(target=get_and_parse, args=(self.in_queue, self.out_queue, self.process, self.counters, log_queue, logger.level, formatter), kwargs=(self.process_args)) for i in range(p_processors_nb_threads)]
