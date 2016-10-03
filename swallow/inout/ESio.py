@@ -1,10 +1,8 @@
-from swallow.settings import logger, EXIT_IO_ERROR, EXIT_USER_INTERRUPT
-from elasticsearch import Elasticsearch, helpers, NotFoundError
+from swallow.settings import logger
+from elasticsearch import Elasticsearch, helpers
 import json
-import sys
 import time
 from swallow.logger_mp import get_logger_mp
-import multiprocessing
 
 
 class ESio:
@@ -37,7 +35,6 @@ class ESio:
         except Exception as e:
             logger.error('Connection failed to ES Server : %s', json.dumps(param))
             logger.error(e)
-            sys.exit(EXIT_IO_ERROR)
 
         try:
             result = es.count(index=p_index, body=p_query)
@@ -114,12 +111,14 @@ class ESio:
         except Exception as e:
             logger_mp.error('Connection failed to ES Server : %s', json.dumps(param))
             logger_mp.error(e)
-            sys.exit(EXIT_IO_ERROR)
 
         if p_disable_indexing:
             self._set_indexing_refresh(logger_mp, es, p_index, "-1")
 
         # Loop untill receiving the "poison pill" item (meaning : no more element to read)
+        # Main loop max retry
+        main_loop_max_retry = 5
+        main_loop_retry = 0
         start = time.time()
         poison_pill = False
         while not(poison_pill):
@@ -165,14 +164,14 @@ class ESio:
                             nb_items = self.counters['nb_items_stored'].value
                             if nb_items % self.counters['log_every'] == 0 and nb_items != 0:
                                 logger_mp.info("Store : {0} items".format(nb_items))
-                                logger_mp.debug("   -> Avg store time : {0}ms".format(1000*self.counters['whole_storage_time'].value / nb_items))
-                                logger_mp.debug("   -> Avg bulk time  : {0}ms".format(1000*self.counters['bulk_storage_time'].value / nb_items))
+                                logger_mp.debug("   -> Avg store time : {0}ms".format(1000 * self.counters['whole_storage_time'].value / nb_items))
+                                logger_mp.debug("   -> Avg bulk time  : {0}ms".format(1000 * self.counters['bulk_storage_time'].value / nb_items))
 
                             start = time.time()
 
                 if not is_indexed:
                     start = time.time()
-                    logger_mp.error("Bulk not indexed in elasticsearch : operation aborted after %i retries", try_counter-1)
+                    logger_mp.error("Bulk not indexed in elasticsearch : operation aborted after %i retries", try_counter - 1)
                     with self.counters['nb_items_error'].get_lock():
                         self.counters['nb_items_error'].value += len(bulk)
 
@@ -181,8 +180,14 @@ class ESio:
                 # If indexing has been disabled, enable it again
                 if p_disable_indexing:
                     self._set_indexing_refresh(logger_mp, es, p_index, "1s")
-
-                sys.exit(EXIT_USER_INTERRUPT)
+                poison_pill = True
+                p_queue.task_done()
+            except Exception as e:
+                logger_mp.error("An error occured while storing elements to ES : {0}".format(e))
+                main_loop_retry += 1
+                if main_loop_retry >= main_loop_max_retry:
+                    poison_pill = True
+                    p_queue.task_done()
 
         # If indexing has been disabled, enable it again
         if p_disable_indexing:
@@ -208,7 +213,6 @@ class ESio:
         except Exception as e:
             logger_mp.error('Connection failed to ES Server for reading: {0}'.format(json.dumps(param)))
             logger_mp.error(e)
-            sys.exit(EXIT_IO_ERROR)
 
         try:
             if not self.scroll_docs:
@@ -230,7 +234,7 @@ class ESio:
 
                     if nb_items % self.counters['log_every'] == 0:
                         logger_mp.info("Scan : {0} items".format(nb_items))
-                        logger_mp.debug("   -> Avg scan time : {0}ms".format(1000*self.counters['scan_time'].value / nb_items))
+                        logger_mp.debug("   -> Avg scan time : {0}ms".format(1000 * self.counters['scan_time'].value / nb_items))
 
                     # Start timers reinit
                     start = time.time()

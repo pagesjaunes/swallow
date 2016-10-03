@@ -1,8 +1,4 @@
-from swallow.settings import EXIT_IO_ERROR
-import sys
-import time
 import pymysql.cursors
-from pymysql import OperationalError
 from swallow.logger_mp import get_logger_mp
 
 

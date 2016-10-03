@@ -1,6 +1,4 @@
-from swallow.settings import EXIT_IO_ERROR, EXIT_USER_INTERRUPT
 import xml.etree.cElementTree as ET
-import datetime
 from swallow.logger_mp import get_logger_mp
 
 
@@ -19,9 +17,7 @@ class XMLio:
             p_xpath:        XPATH used to split document into multiple docs
         """
         logger = get_logger_mp(__name__, self.log_queue, self.log_level, self.formatter)
-
         logger.info('Scanning xml in %s', p_file)
-        start_time = datetime.datetime.now()
 
         tree = ET.parse(p_file)
         root = tree.getroot()

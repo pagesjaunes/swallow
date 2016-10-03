@@ -1,7 +1,6 @@
-from swallow.settings import logger, EXIT_IO_ERROR
+from swallow.settings import logger
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError
-import sys
 import time
 from swallow.logger_mp import get_logger_mp
 
@@ -21,7 +20,7 @@ class Mongoio:
                                 of the rs (the p_host,p_port is also added to the list)
             p_rs_name:          ReplicaSet Name
         """
-        self.host = [p_host+':'+str(p_port)]
+        self.host = [p_host + ':' + str(p_port)]
         self.base = p_base
         self.user = p_user
         self.password = p_password
@@ -65,7 +64,6 @@ class Mongoio:
         except PyMongoError as e:
             logger.error('Failed to connect to %s', uri)
             logger.error(e)
-            sys.exit(EXIT_IO_ERROR)
 
         # Scan collection according to the query
         documents = mongo_connect[p_collection].find(p_query)
@@ -89,7 +87,7 @@ class Mongoio:
         if nb_docs == 0:
             logger.info("No document to process")
         else:
-            logger.info("Average reading time : %fs", (time_for_x_items - start_time)/nb_docs)
+            logger.info("Average reading time : %fs", (time_for_x_items - start_time) / nb_docs)
 
     def remove_items(self, p_collection, p_query):
         """Execute a delete query on collection using p_query selection
@@ -109,7 +107,6 @@ class Mongoio:
         except PyMongoError as e:
             logger.error('Failed to connect to %s', uri)
             logger.error(e)
-            sys.exit(EXIT_IO_ERROR)
 
         try:
             mongo_connect[p_collection].remove(p_query)
@@ -117,7 +114,6 @@ class Mongoio:
         except PyMongoError as e:
             logger.error('Failed to remove entries from %s', p_collection)
             logger.error(e)
-            sys.exit(EXIT_IO_ERROR)
 
     def count_items(self, p_collection, p_query):
         """Return item count using p_query selection
@@ -137,7 +133,6 @@ class Mongoio:
         except PyMongoError as e:
             logger.error('Failed to connect to %s', uri)
             logger.error(e)
-            sys.exit(EXIT_IO_ERROR)
 
         try:
             return mongo_connect[p_collection].find(p_query).count()
@@ -145,7 +140,6 @@ class Mongoio:
         except PyMongoError as e:
             logger.error('Failed to count entries from %s', p_collection)
             logger.error(e)
-            sys.exit(EXIT_IO_ERROR)
 
     def dequeue_and_store(self, p_queue, p_collection, p_upsert=True):
         """Gets docs from p_queue and stores them in a mongo collection
@@ -168,9 +162,11 @@ class Mongoio:
         except PyMongoError as e:
             logger.error('Failed to connect to %s', uri)
             logger.error(e)
-            sys.exit(EXIT_IO_ERROR)
 
         # Loop untill receiving the "poison pill" item (meaning : no more element to read)
+        # Main loop max retry
+        main_loop_max_retry = 5
+        main_loop_retry = 0
         poison_pill = False
 
         while not(poison_pill):
@@ -213,4 +209,12 @@ class Mongoio:
 
             except KeyboardInterrupt:
                 logger.info("Mongoio.dequeue_and_store : User interruption of the process")
-                sys.exit(EXIT_USER_INTERRUPT)
+                poison_pill = True
+                p_queue.task_done()
+            except Exception as e:
+                logger.error("An error occured while storing elements to Mongo : {0}".format(e))
+                main_loop_retry += 1
+                if main_loop_retry >= main_loop_max_retry:
+                    logger.error("Too many errors while storing. Process interrupted after {0} errors".format(main_loop_retry))
+                    poison_pill = True
+                    p_queue.task_done()

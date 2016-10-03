@@ -1,6 +1,4 @@
-from multiprocessing import TimeoutError, current_process
-import sys
-import logging
+from multiprocessing import TimeoutError
 from swallow.logger_mp import get_logger_mp
 import time
 
@@ -19,10 +17,13 @@ def get_and_parse(p_inqueue, p_outqueue, p_process, p_counters, p_log_queue, p_l
     """
 
     logger = get_logger_mp(__name__, p_log_queue, p_log_level, p_formatter)
-    current = current_process()
 
     start = time.time()
     start_idle = None
+    # Main loop max retry
+    main_loop_max_retry = 5
+    main_loop_retry = 0
+
     while True:
         try:
             try:
@@ -66,9 +67,9 @@ def get_and_parse(p_inqueue, p_outqueue, p_process, p_counters, p_log_queue, p_l
                     nb_items = p_counters['nb_items_processed'].value
                     if p_counters['nb_items_processed'].value % p_counters['log_every'] == 0:
                         logger.info("Process : {0} items".format(nb_items))
-                        logger.debug("   -> Avg process time   : {0}ms".format(1000*p_counters['whole_process_time'].value / nb_items))
-                        logger.debug("   -> Avg real time      : {0}ms".format(1000*p_counters['real_process_time'].value / nb_items))
-                        logger.debug("   -> Avg idle time      : {0}ms".format(1000*p_counters['idle_process_time'].value / nb_items))
+                        logger.debug("   -> Avg process time   : {0}ms".format(1000 * p_counters['whole_process_time'].value / nb_items))
+                        logger.debug("   -> Avg real time      : {0}ms".format(1000 * p_counters['real_process_time'].value / nb_items))
+                        logger.debug("   -> Avg idle time      : {0}ms".format(1000 * p_counters['idle_process_time'].value / nb_items))
                         logger.debug("State of queues :")
                         logger.debug("   -> Read  : {0}".format(p_inqueue.qsize()))
                         logger.debug("   -> Write : {0}".format(p_outqueue.qsize()))
@@ -83,4 +84,12 @@ def get_and_parse(p_inqueue, p_outqueue, p_process, p_counters, p_log_queue, p_l
                 p_counters['nb_items_error'].value += 1
         except KeyboardInterrupt:
             logger.info("user interruption")
-            sys.exit(0)
+            p_inqueue.task_done()
+            break
+        except Exception as e:
+            logger.error("An error occured while processing elements : {0}".format(e))
+            main_loop_retry += 1
+            if main_loop_retry >= main_loop_max_retry:
+                logger.error("Too many errors while processing. Process interrupted after {0} errors".format(main_loop_retry))
+                p_inqueue.task_done()
+                break

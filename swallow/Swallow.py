@@ -165,21 +165,21 @@ class Swallow:
         avg_time = 0
         nb_items = self.counters['nb_items_scanned'].value
         if nb_items:
-            avg_time = 1000*self.counters['scan_time'].value / nb_items
+            avg_time = 1000 * self.counters['scan_time'].value / nb_items
         logger.info('{0} items scanned ({1}ms)'.format(nb_items, avg_time))
 
         avg_time = 0
         avg_time_idle = 0
         nb_items = self.counters['nb_items_processed'].value
         if nb_items:
-            avg_time = 1000*self.counters['real_process_time'].value / nb_items
-            avg_time_idle = 1000*self.counters['idle_process_time'].value / nb_items
+            avg_time = 1000 * self.counters['real_process_time'].value / nb_items
+            avg_time_idle = 1000 * self.counters['idle_process_time'].value / nb_items
         logger.info('{0} items processed (process : {1}ms / idle : {2}ms)'.format(nb_items, avg_time, avg_time_idle))
 
         avg_time = 0
         nb_items = self.counters['nb_items_stored'].value
         if nb_items:
-            avg_time = 1000*self.counters['whole_storage_time'].value / nb_items
+            avg_time = 1000 * self.counters['whole_storage_time'].value / nb_items
         logger.info('{0} items stored ({1}ms)'.format(nb_items, avg_time))
 
         nb_items = self.counters['nb_items_error'].value

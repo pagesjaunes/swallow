@@ -1,4 +1,3 @@
-import multiprocessing
 from logging.handlers import QueueHandler
 import logging
 

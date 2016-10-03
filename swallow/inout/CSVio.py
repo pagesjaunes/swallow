@@ -1,5 +1,3 @@
-from swallow.settings import EXIT_USER_INTERRUPT
-import sys
 import csv
 import os
 from swallow.logger_mp import get_logger_mp
@@ -28,6 +26,9 @@ class CSVio:
             self.out_csvfile[p_file] = csv.writer(self.csvfilecursor[p_file], delimiter=p_delimiter, quotechar=p_quotechar, quoting=p_quoting, lineterminator=os.linesep)
 
         # Loop untill receiving the "poison pill" item (meaning : no more element to read)
+        # Main loop max retry
+        main_loop_max_retry = 5
+        main_loop_retry = 0
         poison_pill = False
         while not(poison_pill):
             try:
@@ -51,7 +52,15 @@ class CSVio:
             except KeyboardInterrupt:
                 logger.info("CSVio.dequeue_and_store : User interruption of the process")
                 self.csvfilecursor[p_file].close()
-                sys.exit(EXIT_USER_INTERRUPT)
+                poison_pill = True
+                p_queue.task_done()
+            except Exception as e:
+                logger.error("An error occured while storing elements to CSV : {0}".format(e))
+                main_loop_retry += 1
+                if main_loop_retry >= main_loop_max_retry:
+                    logger.error("Too many errors while storing. Process interrupted after {0} errors".format(main_loop_retry))
+                    poison_pill = True
+                    p_queue.task_done()
 
     def scan_and_queue(self, p_queue, p_file, p_delimiter=',', p_skip_header=True):
         """Reads csv file and pushes each line to the queue

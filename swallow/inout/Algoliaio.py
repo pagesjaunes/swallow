@@ -1,6 +1,5 @@
 from swallow.settings import logger
 from algoliasearch import algoliasearch
-import sys
 from swallow.logger_mp import get_logger_mp
 import time
 
@@ -97,6 +96,9 @@ class Algoliaio:
         index = client.init_index(p_index)
 
         # Loop untill receiving the "poison pill" item (meaning : no more element to read)
+        # Main loop max retry
+        main_loop_max_retry = 5
+        main_loop_retry = 0
         start = time.time()
         poison_pill = False
         while not(poison_pill):
@@ -138,20 +140,28 @@ class Algoliaio:
                             nb_items = self.counters['nb_items_stored'].value
                             if nb_items % self.counters['log_every'] == 0 and nb_items != 0:
                                 logger.info("Store : {0} items".format(nb_items))
-                                logger.debug("   -> Avg store time : {0}ms".format(1000*self.counters['whole_storage_time'].value / nb_items))
-                                logger.debug("   -> Avg bulk time  : {0}ms".format(1000*self.counters['bulk_storage_time'].value / nb_items))
+                                logger.debug("   -> Avg store time : {0}ms".format(1000 * self.counters['whole_storage_time'].value / nb_items))
+                                logger.debug("   -> Avg bulk time  : {0}ms".format(1000 * self.counters['bulk_storage_time'].value / nb_items))
 
                             start = time.time()
 
                 if not is_indexed:
                     start = time.time()
-                    logger.error("Bulk not indexed in algolia : operation aborted after %i retries", try_counter-1)
+                    logger.error("Bulk not indexed in algolia : operation aborted after %i retries", try_counter - 1)
                     with self.counters['nb_items_error'].get_lock():
                         self.counters['nb_items_error'].value += len(bulk)
 
             except KeyboardInterrupt:
                 logger.info("ESio.dequeue_and_store : User interruption of the process")
-                sys.exit(1)
+                poison_pill = True
+                p_queue.task_done()
+            except Exception as e:
+                logger.error("An error occured while storing elements to Algolia : {0}".format(e))
+                main_loop_retry += 1
+                if main_loop_retry >= main_loop_max_retry:
+                    logger.error("Too many errors while storing. Process interrupted after {0} errors".format(main_loop_retry))
+                    poison_pill = True
+                    p_queue.task_done()
 
     def scan_and_queue(self, p_queue, p_index, p_query={}, p_connect_timeout=1, p_read_timeout=30):
         """Reads docs from an Algolia index according to a query and pushes them to the queue
@@ -167,7 +177,6 @@ class Algoliaio:
             index = client.init_index(p_index)
         except Exception as e:
             logger.error(e)
-            sys.exit(EXIT_IO_ERROR)
 
         try:
             documents = index.browse_all(p_query)
@@ -183,7 +192,7 @@ class Algoliaio:
 
                     if nb_items % self.counters['log_every'] == 0:
                         logger.info("Scan : {0} items".format(nb_items))
-                        logger.debug("   -> Avg scan time : {0}ms".format(1000*self.counters['scan_time'].value / nb_items))
+                        logger.debug("   -> Avg scan time : {0}ms".format(1000 * self.counters['scan_time'].value / nb_items))
 
                     # Start timers reinit
                     start = time.time()
