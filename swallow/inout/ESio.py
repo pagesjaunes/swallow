@@ -104,16 +104,27 @@ class ESio:
         """
         logger_mp = get_logger_mp(__name__, self.log_queue, self.log_level, self.formatter)
 
+        es = None
         try:
             param = [{'host': self.host, 'port': self.port, 'timeout': p_timeout, 'max_retries': p_nbmax_retry, 'retry_on_timeout': True}]
             es = Elasticsearch(param)
+            es.ping()
+            logger_mp.info('Connected to ES Server: %s', json.dumps(param))
+        except Exception as e:
+            logger_mp.error('Connection failed to ES Server : %s', json.dumps(param))
+            logger_mp.error(e)
+
+        # We need to record the previous setting, so as to apply it again after bulk operations
+        current_settings = {}
+        try:
+            current_settings = es.indices.get_settings(index=p_index)
             logger_mp.info('Connected to ES Server: %s', json.dumps(param))
         except Exception as e:
             logger_mp.error('Connection failed to ES Server : %s', json.dumps(param))
             logger_mp.error(e)
 
         if p_disable_indexing:
-            self._set_indexing_refresh(logger_mp, es, p_index, "-1")
+            self._disable_indexing_and_replicat(logger_mp, es, p_index)
 
         # Loop untill receiving the "poison pill" item (meaning : no more element to read)
         # Main loop max retry
@@ -179,7 +190,7 @@ class ESio:
                 logger_mp.info("ESio.dequeue_and_store : User interruption of the process")
                 # If indexing has been disabled, enable it again
                 if p_disable_indexing:
-                    self._set_indexing_refresh(logger_mp, es, p_index, "1s")
+                    self._enable_indexing_and_replicat(logger_mp, es, p_index, current_settings)
                 poison_pill = True
                 p_queue.task_done()
             except Exception as e:
@@ -191,7 +202,7 @@ class ESio:
 
         # If indexing has been disabled, enable it again
         if p_disable_indexing:
-            self._set_indexing_refresh(logger_mp, es, p_index, "1s")
+            self._enable_indexing_and_replicat(logger_mp, es, p_index, current_settings)
 
     def scan_and_queue(self, p_queue, p_index, p_query={}, p_doctype=None, p_scroll_time='5m', p_timeout='1m', p_size=100, p_overall_timeout=30, p_nbmax_retry=3):
         """Reads docs from an es index according to a query and pushes them to the queue
@@ -244,7 +255,21 @@ class ESio:
             with self.counters['nb_items_error'].get_lock():
                 self.counters['nb_items_error'].value += 1
 
-    def _set_indexing_refresh(self, p_logger, p_es_client, p_index, p_refresh_rate="1s"):
+    def _disable_indexing_and_replicat(self, p_logger, p_es_client, p_index):
+        """
+            Disable the indexing process : set the refresh rate to -1 and the number of replicat to 0
+        """
+        self._set_indexing_and_replicat(p_logger, p_es_client, p_index, p_refresh_rate="-1", p_num_replicat=0)
+
+    def _enable_indexing_and_replicat(self, p_logger, p_es_client, p_index, p_default_settings={}):
+        """
+            Enable the indexing process by applying a default setting for refresh rate (1s) and num of replicat
+        """
+        refresh_rate = p_default_settings.get('index', {}).get('refresh_interval', '1s')
+        num_replicat = p_default_settings.get('index', {}).get('number_of_replicas', 1)
+        self._set_indexing_and_replicat(p_logger, p_es_client, p_index, p_refresh_rate=refresh_rate, p_num_replicat=num_replicat)
+
+    def _set_indexing_and_replicat(self, p_logger, p_es_client, p_index, p_refresh_rate="1s", p_num_replicat=1):
         """
             Set the refresh rate for a given index
         """
@@ -253,10 +278,16 @@ class ESio:
         else:
             p_logger.warn("Indexing enabled for index {0}".format(p_index))
 
+        if p_num_replicat == 0:
+            p_logger.warn("No replicat set for index {0}".format(p_index))
+        else:
+            p_logger.warn("Index {0} set with {1} replicats".format(p_index, p_num_replicat))
+
         # Enable indexing again
         settings = {
             "index": {
-                "refresh_interval": p_refresh_rate
+                "refresh_interval": p_refresh_rate,
+                "number_of_replicas": p_num_replicat
             }
         }
 
