@@ -124,7 +124,11 @@ class ESio:
             logger_mp.error(e)
 
         if p_disable_indexing:
-            self._disable_indexing_and_replicat(logger_mp, es, p_index)
+            try:
+                self._disable_indexing_and_replicat(logger_mp, es, p_index)
+            except Exception as e:
+                logger_mp.error("Can't disable indexing and replicat on {}".format(p_index))
+                logger_mp.error(e)
 
         # Loop untill receiving the "poison pill" item (meaning : no more element to read)
         # Main loop max retry
@@ -202,7 +206,11 @@ class ESio:
 
         # If indexing has been disabled, enable it again
         if p_disable_indexing:
-            self._enable_indexing_and_replicat(logger_mp, es, p_index, current_settings)
+            try:
+                self._enable_indexing_and_replicat(logger_mp, es, p_index, current_settings)
+            except Exception as e:
+                logger_mp.error("Can't enable indexing and replicat again on {} from previous settings {}".format(p_index, current_settings))
+                logger_mp.error(e)
 
     def scan_and_queue(self, p_queue, p_index, p_query={}, p_doctype=None, p_scroll_time='5m', p_timeout='1m', p_size=100, p_overall_timeout=30, p_nbmax_retry=3):
         """Reads docs from an es index according to a query and pushes them to the queue
