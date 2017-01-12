@@ -159,3 +159,6 @@ This project is released under version 2.0 of the [Apache License][]
 
 It refers to Holy Grail and King Arthur talking about African Swallows. This framework transmits and transforms data from queue to queue, as the original swallow carried coconuts.
 
+# MacOS Users
+
+Be careful : on MacOS, multiprocessing.Queue max size is limited to 32767 items. Make sure you init the Swallow object with no more than 32767. If you don't, you'll get a OSError 22.
