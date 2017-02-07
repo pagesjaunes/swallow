@@ -24,7 +24,7 @@ class ESio:
         self.port = p_port
         self.bulk_size = p_bulksize
         self.scroll_docs = None
-        self.proxy = None
+        self.proxy = p_proxy
 
     def count(self, p_index, p_query={}):
         """Gets the number of docs for a query
