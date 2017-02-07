@@ -1,14 +1,19 @@
 from swallow.settings import logger
-from elasticsearch import Elasticsearch, helpers
+from elasticsearch import Elasticsearch, helpers, RequestsHttpConnection
 import json
 import time
 from swallow.logger_mp import get_logger_mp
 
+class MyConnection(RequestsHttpConnection):
+    def __init__(self, *args, **kwargs):
+        proxies = kwargs.pop('proxies', {})
+        super(MyConnection, self).__init__(*args, **kwargs)
+        self.session.proxies = proxies
 
 class ESio:
     """Reads and Writes documents from/to elasticsearch"""
 
-    def __init__(self, p_host, p_port, p_bulksize):
+    def __init__(self, p_host, p_port, p_bulksize, p_proxy=None):
         """Class creation
 
             p_host:     Elasticsearch Server address
@@ -19,6 +24,7 @@ class ESio:
         self.port = p_port
         self.bulk_size = p_bulksize
         self.scroll_docs = None
+        self.proxy = None
 
     def count(self, p_index, p_query={}):
         """Gets the number of docs for a query
@@ -30,7 +36,11 @@ class ESio:
         """
         try:
             param = [{'host': self.host, 'port': self.port}]
-            es = Elasticsearch(param)
+            if self.proxy is not None:
+                es = Elasticsearch(param)
+            else:
+                es = Elasticsearch(param, connection_class=MyConnection, proxies={'http': self.proxy})
+
             logger.info('Connected to ES Server: %s', json.dumps(param))
         except Exception as e:
             logger.error('Connection failed to ES Server : %s', json.dumps(param))
@@ -53,7 +63,10 @@ class ESio:
         """
         try:
             param = [{'host': self.host, 'port': self.port}]
-            es = Elasticsearch(param)
+            if self.proxy is not None:
+                es = Elasticsearch(param)
+            else:
+                es = Elasticsearch(param, connection_class=MyConnection, proxies={'http': self.proxy})
             logger.info('Connected to ES Server: %s', json.dumps(param))
         except Exception as e:
             logger.error('Connection failed to ES Server : %s', json.dumps(param))
@@ -76,7 +89,10 @@ class ESio:
 
         try:
             param = [{'host': self.host, 'port': self.port}]
-            es = Elasticsearch(param)
+            if self.proxy is not None:
+                es = Elasticsearch(param)
+            else:
+                es = Elasticsearch(param, connection_class=MyConnection, proxies={'http': self.proxy})
             logger.info('Connected to ES Server: %s', json.dumps(param))
         except Exception as e:
             logger.error('Connection failed to ES Server : %s', json.dumps(param))
@@ -107,7 +123,10 @@ class ESio:
         es = None
         try:
             param = [{'host': self.host, 'port': self.port, 'timeout': p_timeout, 'max_retries': p_nbmax_retry, 'retry_on_timeout': True}]
-            es = Elasticsearch(param)
+            if self.proxy is not None:
+                es = Elasticsearch(param)
+            else:
+                es = Elasticsearch(param, connection_class=MyConnection, proxies={'http': self.proxy})
             es.ping()
             logger_mp.info('Connected to ES Server: %s', json.dumps(param))
         except Exception as e:
@@ -226,7 +245,10 @@ class ESio:
 
         try:
             param = [{'host': self.host, 'port': self.port, 'timeout': p_overall_timeout, 'max_retries': p_nbmax_retry, 'retry_on_timeout': True}]
-            es = Elasticsearch(param)
+            if self.proxy is not None:
+                es = Elasticsearch(param)
+            else:
+                es = Elasticsearch(param, connection_class=MyConnection, proxies={'http': self.proxy})
             es.ping()
             logger_mp.info('Connected to ES Server for reading: {0}'.format(json.dumps(param)))
         except Exception as e:
