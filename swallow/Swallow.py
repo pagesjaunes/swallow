@@ -3,6 +3,7 @@ import multiprocessing as mp
 from swallow.parser.parser import get_and_parse
 from multiprocessing import Process, JoinableQueue, Value, Queue
 import logging
+import sys
 from logging.handlers import QueueListener
 
 
@@ -47,6 +48,8 @@ class Swallow:
 
     def __init__(self, p_max_items_by_queue=50000, p_forkserver=False, p_log_every=10000):
         """Class creation"""
+        logger = logging.getLogger('swallow')
+
         if p_forkserver:
             mp.set_start_method('forkserver')
 
@@ -59,6 +62,9 @@ class Swallow:
             self.in_queue = JoinableQueue()
             self.out_queue = JoinableQueue()
         else:
+            if (sys.platform.lower() == 'darwin'):
+                logger.warn("As running Swallow on a MacOS env, the number of items is limited to 32767.")
+                p_max_items_by_queue = 32767
             self.in_queue = JoinableQueue(p_max_items_by_queue)
             self.out_queue = JoinableQueue(p_max_items_by_queue)
 
