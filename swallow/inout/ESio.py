@@ -36,7 +36,7 @@ class ESio:
         """
         try:
             param = [{'host': self.host, 'port': self.port}]
-            if self.proxy is not None:
+            if self.proxy is None:
                 es = Elasticsearch(param)
             else:
                 es = Elasticsearch(param, connection_class=MyConnection, proxies={'http': self.proxy})
@@ -63,7 +63,7 @@ class ESio:
         """
         try:
             param = [{'host': self.host, 'port': self.port}]
-            if self.proxy is not None:
+            if self.proxy is None:
                 es = Elasticsearch(param)
             else:
                 es = Elasticsearch(param, connection_class=MyConnection, proxies={'http': self.proxy})
@@ -89,7 +89,7 @@ class ESio:
 
         try:
             param = [{'host': self.host, 'port': self.port}]
-            if self.proxy is not None:
+            if self.proxy is None:
                 es = Elasticsearch(param)
             else:
                 es = Elasticsearch(param, connection_class=MyConnection, proxies={'http': self.proxy})
@@ -123,7 +123,7 @@ class ESio:
         es = None
         try:
             param = [{'host': self.host, 'port': self.port, 'timeout': p_timeout, 'max_retries': p_nbmax_retry, 'retry_on_timeout': True}]
-            if self.proxy is not None:
+            if self.proxy is None:
                 es = Elasticsearch(param)
             else:
                 es = Elasticsearch(param, connection_class=MyConnection, proxies={'http': self.proxy})
@@ -245,7 +245,7 @@ class ESio:
 
         try:
             param = [{'host': self.host, 'port': self.port, 'timeout': p_overall_timeout, 'max_retries': p_nbmax_retry, 'retry_on_timeout': True}]
-            if self.proxy is not None:
+            if self.proxy is None:
                 es = Elasticsearch(param)
             else:
                 es = Elasticsearch(param, connection_class=MyConnection, proxies={'http': self.proxy})
