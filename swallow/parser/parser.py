@@ -1,6 +1,7 @@
 from multiprocessing import TimeoutError
 from swallow.logger_mp import get_logger_mp
 import time
+from Queue import Empty
 
 
 def get_and_parse(p_inqueue, p_outqueue, p_process, p_counters, p_log_queue, p_log_level, p_formatter, **kwargs):
@@ -23,13 +24,15 @@ def get_and_parse(p_inqueue, p_outqueue, p_process, p_counters, p_log_queue, p_l
     # Main loop max retry
     main_loop_max_retry = 5
     main_loop_retry = 0
+    queue_get_timeout = 60
 
     while True:
         try:
             try:
-                in_doc = p_inqueue.get(False)
-            except Exception:
+                in_doc = p_inqueue.get(block=True, timeout=queue_get_timeout)
+            except Empty:
                 # Idle starts with the first exception (queue empty)
+                logger.debug("No doc in queue in the last {}s".format(queue_get_timeout))
                 if not start_idle:
                     start_idle = time.time()
             else:
