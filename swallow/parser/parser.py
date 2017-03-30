@@ -1,7 +1,10 @@
 from multiprocessing import TimeoutError
 from swallow.logger_mp import get_logger_mp
 import time
-from Queue import Empty
+try:
+    from Queue import Empty
+except ImportError:
+    from queue import Empty
 
 
 def get_and_parse(p_inqueue, p_outqueue, p_process, p_counters, p_log_queue, p_log_level, p_formatter, **kwargs):
